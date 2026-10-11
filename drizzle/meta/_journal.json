@@ -22,6 +22,13 @@
       "when": 1791744492764,
       "tag": "0002_slim_praxagora",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791746189659,
+      "tag": "0003_breezy_mockingbird",
+      "breakpoints": true
     }
   ]
 }

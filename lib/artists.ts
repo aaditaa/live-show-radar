@@ -1,5 +1,5 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
-import { artists, type User } from '@/db/schema';
+import { artistSuggestions, artists, type User } from '@/db/schema';
 import { db } from '@/lib/db';
 import { findArtistImage, getAccessToken, getFollowedArtists } from '@/lib/spotify';
 import { errorMessage, mapWithConcurrency } from '@/lib/http';
@@ -234,4 +234,39 @@ export async function backfillArtistImages(
     missed: missing.length - found,
     ...(firstError ? { error: firstError } : {}),
   };
+}
+
+/**
+ * Give suggestions a face. Gemini returns names, so each one is looked up in
+ * Spotify's catalogue the same conservative way as artist images: the returned
+ * name must match, or the suggestion keeps its monogram.
+ */
+export async function backfillSuggestionImages(userId: string, limit = 24): Promise<number> {
+  const missing = await db
+    .select({
+      id: artistSuggestions.id,
+      name: artistSuggestions.name,
+      aliases: artistSuggestions.aliases,
+    })
+    .from(artistSuggestions)
+    .where(and(eq(artistSuggestions.userId, userId), isNull(artistSuggestions.imageUrl)))
+    .limit(limit);
+
+  if (missing.length === 0) return 0;
+
+  let found = 0;
+  const results = await mapWithConcurrency(missing, 4, async (suggestion) => {
+    const match = await findArtistImage(suggestion.name, suggestion.aliases);
+    if (!match) return false;
+    await db
+      .update(artistSuggestions)
+      .set({ imageUrl: match.imageUrl })
+      .where(eq(artistSuggestions.id, suggestion.id));
+    return true;
+  });
+
+  for (const result of results) {
+    if (result.status === 'fulfilled' && result.value) found += 1;
+  }
+  return found;
 }

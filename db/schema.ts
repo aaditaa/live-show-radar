@@ -221,6 +221,7 @@ export const artistSuggestions = pgTable(
     aliases: text('aliases').array().notNull().default(sql`'{}'::text[]`),
     similarTo: text('similar_to'),
     reason: text('reason'),
+    imageUrl: text('image_url'),
     status: text('status').notNull().default('pending'),
     createdAt: timestamp('created_at', tz).notNull().defaultNow(),
   },

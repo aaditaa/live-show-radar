@@ -7,7 +7,12 @@ import { and, count, eq, not } from 'drizzle-orm';
 import { artistSuggestions, artists, shows, users } from '@/db/schema';
 import { db } from '@/lib/db';
 import { ADMIN_COOKIE, adminSessionToken, checkAdminPassword, hasAdminSession } from '@/lib/auth';
-import { backfillArtistImages, importArtists, syncSpotifyArtists } from '@/lib/artists';
+import {
+  backfillArtistImages,
+  backfillSuggestionImages,
+  importArtists,
+  syncSpotifyArtists,
+} from '@/lib/artists';
 import { optionalEnv } from '@/lib/env';
 import { errorMessage } from '@/lib/http';
 import { suggestArtists } from '@/lib/ai/suggest';
@@ -190,7 +195,12 @@ export async function suggestArtistsAction(): Promise<void> {
       .onConflictDoNothing()
       .returning({ id: artistSuggestions.id });
 
-    return `Gemini suggested ${suggestions.length} artists; ${inserted.length} are new.`;
+    // Suggestions arrive as names; give them a face before they are shown.
+    const withImages = await backfillSuggestionImages(user.id);
+
+    return `Gemini suggested ${suggestions.length} artists; ${inserted.length} are new${
+      withImages > 0 ? `, ${withImages} with photos` : ''
+    }.`;
   });
 }
 
@@ -213,6 +223,7 @@ export async function acceptSuggestionAction(formData: FormData): Promise<void> 
         userId: user.id,
         name: suggestion.name,
         aliases: suggestion.aliases,
+        imageUrl: suggestion.imageUrl,
         source: 'manual' as const,
       })
       .onConflictDoNothing();
