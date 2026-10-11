@@ -5,6 +5,8 @@ import { hasAdminSession } from '@/lib/auth';
 import { isSpotifyConfigured } from '@/lib/spotify';
 import { formatIstDateTime, formatRelative } from '@/lib/time';
 import { AdminBar } from '@/components/admin-bar';
+import { PageHeader } from '@/components/page-header';
+import { IconStar } from '@/components/icons';
 import { Flash } from '@/components/flash';
 import { importArtistsAction, syncSpotifyAction, toggleStarAction } from '@/app/actions';
 
@@ -39,13 +41,12 @@ export default async function ArtistsPage({
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-white">Artists</h1>
-      <p className="mt-1 text-sm text-zinc-400">
-        {rows.length} watched · {counts.spotify} from Spotify · {counts.manual} manual ·{' '}
-        {counts.demo} demo
-        {counts.inactive > 0 ? ` · ${counts.inactive} inactive` : ''}. Starred artists are checked
-        every 2 hours, the rest every 6.
-      </p>
+      <PageHeader
+        title="Artists"
+        subtitle={`${rows.length} watched · ${counts.spotify} from Spotify · ${counts.manual} manual · ${counts.demo} demo${
+          counts.inactive > 0 ? ` · ${counts.inactive} inactive` : ''
+        }. Starred artists are checked every 2 hours, the rest every 6.`}
+      />
 
       <Flash
         done={params.connected ? 'Spotify connected. Use “Sync Spotify” to pull your follow list.' : params.done}
@@ -56,9 +57,9 @@ export default async function ArtistsPage({
 
       {isAdmin ? (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-            <h2 className="text-sm font-medium text-white">Spotify</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+          <section className="panel p-5">
+            <h2 className="text-sm font-semibold">Spotify</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
               {spotifyConnected
                 ? `Connected${currentUser?.spotifyUserId ? ` as ${currentUser.spotifyUserId}` : ''}. Syncing never removes manual or demo artists; unfollowed Spotify artists are deactivated, not deleted.`
                 : 'Not connected. Authorises read-only access to who you follow (scope user-follow-read).'}
@@ -66,7 +67,7 @@ export default async function ArtistsPage({
             <div className="mt-3 flex flex-wrap gap-2">
               <a
                 href="/api/spotify/login"
-                className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-zinc-200"
+                className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
               >
                 {spotifyConnected ? 'Reconnect Spotify' : 'Connect Spotify'}
               </a>
@@ -74,7 +75,7 @@ export default async function ArtistsPage({
                 <form action={syncSpotifyAction}>
                   <button
                     type="submit"
-                    className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-zinc-200 hover:border-white/30"
+                    className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
                   >
                     Sync Spotify
                   </button>
@@ -88,9 +89,9 @@ export default async function ArtistsPage({
             ) : null}
           </section>
 
-          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-            <h2 className="text-sm font-medium text-white">Add artists</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+          <section className="panel p-5">
+            <h2 className="text-sm font-semibold">Add artists</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
               One name per line. Optional second CSV column for aliases, quoted if it contains
               commas. The system works fully without Spotify.
             </p>
@@ -99,11 +100,11 @@ export default async function ArtistsPage({
                 name="artists"
                 rows={4}
                 placeholder={'Prateek Kuhad\nRitviz, "Ritviz Srivastava"'}
-                className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 font-mono text-xs text-zinc-200 placeholder:text-zinc-600"
+                className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] px-3 py-2.5 font-mono text-xs placeholder:text-[var(--muted-dim)]"
               />
               <button
                 type="submit"
-                className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-zinc-200 hover:border-white/30"
+                className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
               >
                 Import
               </button>
@@ -112,54 +113,60 @@ export default async function ArtistsPage({
         </div>
       ) : null}
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-white/10">
+      <div className="panel mt-6 overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-zinc-500">
+          <thead className="border-b border-[var(--line)] text-[11px] uppercase tracking-[0.08em] text-[var(--muted-dim)]">
             <tr>
-              {isAdmin ? <th className="px-4 py-2.5 font-medium">Star</th> : null}
-              <th className="px-4 py-2.5 font-medium">Artist</th>
-              <th className="px-4 py-2.5 font-medium">Aliases</th>
-              <th className="px-4 py-2.5 font-medium">Source</th>
-              <th className="px-4 py-2.5 font-medium">Last check</th>
-              <th className="px-4 py-2.5 font-medium">Next check</th>
+              {isAdmin ? <th className="px-4 py-3 font-medium">Star</th> : null}
+              <th className="px-4 py-3 font-medium">Artist</th>
+              <th className="px-4 py-3 font-medium">Aliases</th>
+              <th className="px-4 py-3 font-medium">Source</th>
+              <th className="px-4 py-3 font-medium">Last check</th>
+              <th className="px-4 py-3 font-medium">Next check</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-[var(--line)]">
             {rows.map((artist) => (
               <tr
                 key={artist.id}
-                className={artist.isActive ? 'text-zinc-300' : 'text-zinc-600 line-through'}
+                className={artist.isActive ? 'text-[var(--muted)] transition hover:bg-white/[0.02]' : 'text-[var(--muted-dim)] line-through'}
               >
                 {isAdmin ? (
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-3">
                     <form action={toggleStarAction}>
                       <input type="hidden" name="artistId" value={artist.id} />
                       <button
                         type="submit"
                         title={artist.isStarred ? 'Unstar' : 'Star'}
-                        className="text-base leading-none text-amber-300 hover:text-amber-200"
+                        className={
+                          artist.isStarred
+                            ? 'text-amber-300 transition hover:text-amber-200'
+                            : 'text-[var(--muted-dim)] transition hover:text-amber-300'
+                        }
                       >
-                        {artist.isStarred ? '★' : '☆'}
+                        <IconStar filled={artist.isStarred} />
                       </button>
                     </form>
                   </td>
                 ) : null}
-                <td className="px-4 py-2.5 font-medium text-white">
-                  {!isAdmin && artist.isStarred ? <span title="Starred">★ </span> : null}
+                <td className="px-4 py-3 font-medium text-white">
+                  {!isAdmin && artist.isStarred ? (
+                    <IconStar filled className="mr-1 inline h-3.5 w-3.5 text-amber-300" />
+                  ) : null}
                   {artist.name}
                 </td>
-                <td className="px-4 py-2.5 text-zinc-500">
+                <td className="px-4 py-3 text-[var(--muted-dim)]">
                   {artist.aliases.length > 0 ? artist.aliases.join(', ') : '—'}
                 </td>
-                <td className="px-4 py-2.5">
-                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs ring-1 ring-inset ring-white/10">
+                <td className="px-4 py-3">
+                  <span className="rounded-full border border-[var(--line)] bg-[var(--panel-raised)] px-2 py-0.5 text-[11px]">
                     {SOURCE_LABEL[artist.source] ?? artist.source}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-zinc-500">
+                <td className="px-4 py-3 text-[var(--muted-dim)]">
                   {artist.lastCheckedAt ? formatRelative(artist.lastCheckedAt) : 'never'}
                 </td>
-                <td className="px-4 py-2.5 text-zinc-500">
+                <td className="px-4 py-3 text-[var(--muted-dim)]">
                   {formatIstDateTime(artist.nextCheckAt)}
                 </td>
               </tr>

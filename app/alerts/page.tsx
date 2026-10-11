@@ -3,6 +3,7 @@ import { alerts, artists, shows } from '@/db/schema';
 import { db } from '@/lib/db';
 import { formatIstDateTime, formatRelative } from '@/lib/time';
 import { Flash } from '@/components/flash';
+import { PageHeader } from '@/components/page-header';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,16 +44,14 @@ export default async function AlertsPage({
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-white">Alerts</h1>
+      <PageHeader
+        title="Alerts"
+        subtitle={`${rows.length} alerts · ${sent} sent · ${failed} failed. Each alert is written by Gemini and sent once — the alert_key unique constraint makes a duplicate impossible, even if two scans overlap.`}
+      />
       <Flash done={params.done} error={params.error} />
-      <p className="mt-1 text-sm text-zinc-400">
-        {rows.length} alerts · {sent} sent · {failed} failed. Each alert is written by Gemini and
-        sent once — the <code className="text-zinc-300">alert_key</code> unique constraint makes a
-        duplicate impossible, even if two scans overlap.
-      </p>
 
       {rows.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-white/10 px-4 py-6 text-sm text-zinc-500">
+        <p className="mt-6 rounded-2xl border border-dashed border-[var(--line)] px-5 py-8 text-sm text-[var(--muted)]">
           No alerts yet. They are sent when a scan finds a new show, when a show materially
           changes, or when an early-bird window is closing within 24 hours.
         </p>
@@ -61,15 +60,15 @@ export default async function AlertsPage({
           {rows.map(({ alert, artistName, city, priority }) => (
             <article
               key={alert.id}
-              className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
+              className="panel p-5"
             >
               <header className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="font-medium text-white">{artistName}</span>
-                <span className="text-zinc-500">{city}</span>
-                <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-400 ring-1 ring-inset ring-white/10">
+                <span className="font-semibold">{artistName}</span>
+                <span className="text-[var(--muted-dim)]">{city}</span>
+                <span className="rounded-full border border-[var(--line)] bg-[var(--panel-raised)] px-2 py-0.5 text-[11px] text-[var(--muted)]">
                   {TYPE_LABEL[alert.alertType] ?? alert.alertType}
                 </span>
-                <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-400 ring-1 ring-inset ring-white/10">
+                <span className="rounded-full border border-[var(--line)] bg-[var(--panel-raised)] px-2 py-0.5 text-[11px] text-[var(--muted)]">
                   {priority}
                 </span>
                 <span
@@ -79,14 +78,14 @@ export default async function AlertsPage({
                 >
                   {alert.deliveryStatus}
                 </span>
-                <span className="ml-auto text-xs text-zinc-500">
+                <span className="ml-auto text-xs text-[var(--muted-dim)]">
                   {alert.sentAt ? formatRelative(alert.sentAt) : 'not sent'}
                 </span>
               </header>
 
               {alert.message ? (
                 <div
-                  className="mt-3 whitespace-pre-wrap rounded-lg bg-black/30 p-3 text-sm text-zinc-300"
+                  className="mt-3 whitespace-pre-wrap rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] p-3.5 text-sm leading-relaxed text-[var(--muted)]"
                   // The message is Telegram HTML written by Gemini and sanitised
                   // to <b>/<i>/<a>/<code> before it is ever sent or shown.
                   dangerouslySetInnerHTML={{ __html: alert.message }}
@@ -97,7 +96,7 @@ export default async function AlertsPage({
                 <p className="mt-2 text-xs text-rose-300">Error: {alert.error}</p>
               ) : null}
               {alert.sentAt ? (
-                <p className="mt-2 text-xs text-zinc-500">{formatIstDateTime(alert.sentAt)}</p>
+                <p className="mt-2 text-xs text-[var(--muted-dim)]">{formatIstDateTime(alert.sentAt)}</p>
               ) : null}
             </article>
           ))}

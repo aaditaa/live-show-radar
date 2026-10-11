@@ -2,6 +2,7 @@ import { desc, sql } from 'drizzle-orm';
 import { aiCalls, scanRuns } from '@/db/schema';
 import { db } from '@/lib/db';
 import { Flash } from '@/components/flash';
+import { PageHeader } from '@/components/page-header';
 import { formatIstDateTime, formatRelative } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
@@ -17,8 +18,8 @@ type ScanError = { source?: string; query?: string; message?: string };
 function Metric({ label, value }: { label: string; value: number | string }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-zinc-500">{label}</dt>
-      <dd className="text-sm text-zinc-200">{value}</dd>
+      <dt className="text-[10px] uppercase tracking-[0.08em] text-[var(--muted-dim)]">{label}</dt>
+      <dd className="text-sm font-medium">{value}</dd>
     </div>
   );
 }
@@ -57,16 +58,14 @@ export default async function ScansPage({
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-white">Scans</h1>
+      <PageHeader
+        title="Scans"
+        subtitle={`Last ${runs.length} scans · ${totals.items} new items · ${totals.shows} new shows · ${totals.alerts} alerts sent. A scan runs every 30 minutes from GitHub Actions, with a daily Vercel cron at 08:00 IST as backup.`}
+      />
       <Flash done={params.done} error={params.error} />
-      <p className="mt-1 text-sm text-zinc-400">
-        Last {runs.length} scans · {totals.items} new items · {totals.shows} new shows ·{' '}
-        {totals.alerts} alerts sent. A scan runs every 30 minutes from GitHub Actions, with a
-        daily Vercel cron at 08:00 IST as backup.
-      </p>
 
       {runs.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-white/10 px-4 py-6 text-sm text-zinc-500">
+        <p className="mt-6 rounded-2xl border border-dashed border-[var(--line)] px-5 py-8 text-sm text-[var(--muted)]">
           No scans yet.
         </p>
       ) : (
@@ -81,14 +80,14 @@ export default async function ScansPage({
             return (
               <article
                 key={run.id}
-                className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
+                className="panel p-5"
               >
                 <header className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-300 ring-1 ring-inset ring-white/10">
+                  <span className="rounded-full border border-[var(--line)] bg-[var(--panel-raised)] px-2.5 py-0.5 text-[11px] font-medium">
                     {TRIGGER_LABEL[run.trigger] ?? run.trigger}
                   </span>
-                  <span className="text-zinc-400">{formatIstDateTime(run.startedAt)}</span>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-[var(--muted)]">{formatIstDateTime(run.startedAt)}</span>
+                  <span className="text-xs text-[var(--muted-dim)]">
                     {formatRelative(run.startedAt)}
                     {seconds ? ` · ${seconds}s` : ' · running'}
                   </span>
@@ -117,7 +116,7 @@ export default async function ScansPage({
                 </dl>
 
                 {ai && ai.calls > 0 ? (
-                  <p className="mt-2 text-xs text-zinc-500">
+                  <p className="mt-2 text-xs text-[var(--muted-dim)]">
                     {ai.inputTokens.toLocaleString('en-IN')} input /{' '}
                     {ai.outputTokens.toLocaleString('en-IN')} output tokens
                     {ai.failed > 0 ? ` · ${ai.failed} failed call${ai.failed === 1 ? '' : 's'}` : ''}
@@ -125,7 +124,7 @@ export default async function ScansPage({
                 ) : null}
 
                 {errors.length > 0 ? (
-                  <ul className="mt-3 space-y-1 border-t border-white/5 pt-3">
+                  <ul className="mt-3 space-y-1 border-t border-[var(--line)] pt-3">
                     {errors.slice(0, 6).map((error, index) => (
                       <li key={index} className="text-xs text-rose-300/80">
                         <span className="text-zinc-500">{error.source ?? 'unknown'}</span>
@@ -135,7 +134,7 @@ export default async function ScansPage({
                       </li>
                     ))}
                     {errors.length > 6 ? (
-                      <li className="text-xs text-zinc-500">
+                      <li className="text-xs text-[var(--muted-dim)]">
                         and {errors.length - 6} more
                       </li>
                     ) : null}

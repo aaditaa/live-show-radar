@@ -14,14 +14,14 @@ export function Flash({ done, error }: { done?: string; error?: string }) {
 
   if (error) {
     return (
-      <p className="mt-4 rounded-lg border border-rose-500/20 bg-rose-500/[0.06] px-3 py-2 text-sm text-rose-200">
+      <p className="mt-4 rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-4 py-3 text-sm text-rose-200">
         {ERROR_COPY[error] ?? error}
       </p>
     );
   }
 
   return (
-    <p className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2 text-sm text-emerald-300">
+    <p className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.07] px-4 py-3 text-sm text-emerald-300">
       {done}
     </p>
   );

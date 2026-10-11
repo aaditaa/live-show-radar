@@ -1,19 +1,75 @@
 @import "tailwindcss";
 
+/*
+ * Dark navy product surface: one deep background, raised panels, and a single
+ * warm accent reserved for the action we actually want taken (buy tickets).
+ */
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  --bg: #0f1021;
+  --bg-deep: #0b0c1a;
+  --panel: #191a30;
+  --panel-raised: #20223c;
+  --line: #2a2c48;
+  --text: #f2f3f8;
+  --muted: #8c8fa8;
+  --muted-dim: #5f6279;
+
+  --accent: #ff7a59;
+  --accent-hover: #ff9070;
+
+  --p0-from: #ff6b5b;
+  --p0-to: #c9304e;
+  --p1-from: #7b61ff;
+  --p1-to: #4530c9;
+  --p2-from: #3fa9f5;
+  --p2-to: #1b6fd4;
+  --p3-from: #3a3d5c;
+  --p3-to: #272943;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-muted-dim: var(--muted-dim);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Horizontal card rails: scrollable, without a scrollbar cutting the design. */
+.rail {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+
+.panel-raised {
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+
+/* The faint diagonal facets behind the header in the reference. */
+.facets {
+  background-image:
+    linear-gradient(135deg, transparent 62%, rgba(123, 97, 255, 0.07) 62%, rgba(123, 97, 255, 0.07) 70%, transparent 70%),
+    linear-gradient(115deg, transparent 72%, rgba(255, 122, 89, 0.06) 72%, rgba(255, 122, 89, 0.06) 78%, transparent 78%);
 }

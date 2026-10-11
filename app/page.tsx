@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import { ShowCard } from '@/components/show-card';
+import { PageHeader } from '@/components/page-header';
 import { HOME_CITY } from '@/lib/cities';
 import {
   getArtistStats,
@@ -15,36 +17,48 @@ export const dynamic = 'force-dynamic';
 
 const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+/** The top metric strip: label above a large figure, divided by hairlines. */
+function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-      <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
-      <p className="mt-1 text-sm font-medium text-white">{value}</p>
-      {hint ? <p className="text-xs text-zinc-500">{hint}</p> : null}
+    <div className="min-w-[150px] flex-1 px-5 py-4 sm:first:pl-0">
+      <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--muted-dim)]">{label}</p>
+      <p className="mt-1 text-xl font-semibold tracking-tight">{value}</p>
+      <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">{hint}</p>
     </div>
   );
 }
 
-function Section({
-  title, subtitle, rows, emptyNote,
+function Rail({
+  title,
+  note,
+  rows,
+  empty,
+  accent,
 }: {
   title: string;
-  subtitle: string;
+  note: string;
   rows: ShowWithArtist[];
-  emptyNote: string;
+  empty: string;
+  accent?: boolean;
 }) {
   return (
-    <section className="mt-10">
+    <section className="mt-8">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-        <span className="text-xs text-zinc-500">{subtitle}</span>
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold">
+          {accent ? (
+            <span className="h-4 w-1 rounded-full bg-[var(--accent)]" aria-hidden />
+          ) : null}
+          {title}
+        </h2>
+        <span className="text-[11px] text-[var(--muted-dim)]">{note}</span>
       </div>
+
       {rows.length === 0 ? (
-        <p className="mt-3 rounded-xl border border-dashed border-white/10 px-4 py-6 text-sm text-zinc-500">
-          {emptyNote}
+        <p className="mt-3 rounded-2xl border border-dashed border-[var(--line)] px-5 py-8 text-sm text-[var(--muted)]">
+          {empty}
         </p>
       ) : (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="rail mt-3 flex gap-4 overflow-x-auto pb-2">
           {rows.map((row) => (
             <ShowCard key={row.show.id} row={row} />
           ))}
@@ -72,92 +86,93 @@ export default async function DashboardPage({
   ]);
 
   const { home, elsewhere } = splitByCity(rows);
+  const urgent = rows.filter((row) => row.show.priority === 'P0').length;
+
+  const select =
+    'rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--text)]';
 
   return (
     <>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
-          Live shows on the radar
-        </h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Concert and festival announcements in India for every artist Karan follows, with
-          early-bird ticket windows called out first.
-        </p>
-      </div>
+      <PageHeader
+        title="Live shows on the radar"
+        subtitle="Concert and festival announcements in India for every artist Karan follows, with early-bird ticket windows called out first."
+      />
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
+      <div className="panel flex flex-wrap divide-[var(--line)] px-5 sm:divide-x">
+        <Metric
           label="Last scan"
-          value={lastScan ? formatRelative(lastScan.startedAt) : 'no scans yet'}
-          hint={lastScan ? formatIstDateTime(lastScan.startedAt) : 'run one from /scans'}
+          value={lastScan ? formatRelative(lastScan.startedAt) : 'none yet'}
+          hint={lastScan ? formatIstDateTime(lastScan.startedAt) : 'run one from Scans'}
         />
-        <Stat
-          label="Next scan due"
+        <Metric
+          label="Next due"
           value={formatEta(nextCheckAt)}
           hint={nextCheckAt ? formatIstDateTime(nextCheckAt) : 'no active artists'}
         />
-        <Stat
-          label="Artists watched"
+        <Metric
+          label="Artists"
           value={`${stats.active} active`}
           hint={`${stats.starred} starred · ${stats.total} total`}
         />
-        <Stat
+        <Metric
           label="Upcoming shows"
-          value={`${rows.length} found`}
-          hint={`${home.length} in ${HOME_CITY}`}
+          value={String(rows.length)}
+          hint={`${home.length} in ${HOME_CITY} · ${elsewhere.length} elsewhere`}
+        />
+        <Metric
+          label="Buy today"
+          value={String(urgent)}
+          hint={urgent > 0 ? 'early bird open in Bengaluru' : 'nothing urgent'}
         />
       </div>
 
-      <form className="mt-6 flex flex-wrap items-end gap-3 text-sm" action="/">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">City</span>
-          <select
-            name="city"
-            defaultValue={city ?? 'all'}
-            className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-zinc-200"
-          >
-            <option value="all">All cities</option>
-            {cities.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">Priority</span>
-          <select
-            name="priority"
-            defaultValue={priority ?? 'all'}
-            className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-zinc-200"
-          >
-            <option value="all">All priorities</option>
-            {PRIORITIES.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </label>
+      <form className="mt-5 flex flex-wrap items-center gap-2" action="/">
+        <select name="city" defaultValue={city ?? 'all'} className={select} aria-label="City">
+          <option value="all">All cities</option>
+          {cities.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <select
+          name="priority"
+          defaultValue={priority ?? 'all'}
+          className={select}
+          aria-label="Priority"
+        >
+          <option value="all">All priorities</option>
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
-          className="rounded-lg border border-white/10 px-3 py-1.5 text-zinc-200 hover:border-white/30"
+          className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
         >
           Apply
         </button>
+        {city || priority ? (
+          <Link href="/" className="px-2 text-sm text-[var(--muted)] hover:text-white">
+            Clear
+          </Link>
+        ) : null}
       </form>
 
-      <Section
+      <Rail
+        accent
         title={HOME_CITY}
-        subtitle="home city — checked first"
+        note="home city — checked first"
         rows={home}
-        emptyNote={`No ${HOME_CITY} shows on the radar yet. The scanner only reports announcements it can find published online.`}
+        empty={`No ${HOME_CITY} shows yet. The scanner only reports announcements it can find published online.`}
       />
-      <Section
+      <Rail
         title="Elsewhere in India"
-        subtitle="other Indian cities"
+        note="other Indian cities"
         rows={elsewhere}
-        emptyNote="Nothing elsewhere in India yet."
+        empty="Nothing elsewhere in India yet."
       />
     </>
   );

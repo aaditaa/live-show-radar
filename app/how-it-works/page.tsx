@@ -17,6 +17,7 @@ import {
 import { EARLY_BIRD_DEADLINE_SOON_HOURS, LOW_CONFIDENCE_MAX } from '@/lib/pipeline/priority';
 import { EARLY_BIRD_REMINDER_HOURS } from '@/lib/pipeline/alerts';
 import { formatRelative } from '@/lib/time';
+import { PageHeader } from '@/components/page-header';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +63,7 @@ const AI_TASKS = [
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-10">
-      <h2 className="text-lg font-semibold text-white">{title}</h2>
+      <h2 className="text-[15px] font-semibold">{title}</h2>
       {children}
     </section>
   );
@@ -91,32 +92,29 @@ export default async function HowItWorksPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-white">How it works</h1>
-      <p className="mt-1 max-w-prose text-sm text-zinc-400">
-        Live Show Radar watches concert and festival announcements in India for every artist Karan
-        follows and alerts him when one appears, with early-bird ticket windows called out first.
-        Every AI task runs on Google Gemini Flash. No show is ever hard-coded: the only seeded data
-        is the artist list.
-      </p>
+      <PageHeader
+        title="How it works"
+        subtitle="Live Show Radar watches concert and festival announcements in India for every artist Karan follows and alerts him when one appears, with early-bird ticket windows called out first. Every AI task runs on Google Gemini Flash. No show is ever hard-coded: the only seeded data is the artist list."
+      />
 
       <Section title="Components">
-        <div className="mt-3 overflow-x-auto rounded-xl border border-white/10">
+        <div className="panel mt-3 overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-zinc-500">
+            <thead className="border-b border-[var(--line)] text-[11px] uppercase tracking-[0.08em] text-[var(--muted-dim)]">
               <tr>
-                <th className="px-4 py-2.5 font-medium">#</th>
-                <th className="px-4 py-2.5 font-medium">Component</th>
-                <th className="px-4 py-2.5 font-medium">Built with</th>
-                <th className="px-4 py-2.5 font-medium">Lives in</th>
+                <th className="px-4 py-3 font-medium">#</th>
+                <th className="px-4 py-3 font-medium">Component</th>
+                <th className="px-4 py-3 font-medium">Built with</th>
+                <th className="px-4 py-3 font-medium">Lives in</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 text-zinc-300">
+            <tbody className="divide-y divide-[var(--line)] text-[var(--muted)]">
               {COMPONENTS.map(([n, name, built, lives]) => (
                 <tr key={n}>
-                  <td className="px-4 py-2.5 text-zinc-500">{n}</td>
-                  <td className="px-4 py-2.5 font-medium text-white">{name}</td>
-                  <td className="px-4 py-2.5">{built}</td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">{lives}</td>
+                  <td className="px-4 py-3 text-[var(--muted-dim)]">{n}</td>
+                  <td className="px-4 py-3 font-medium text-white">{name}</td>
+                  <td className="px-4 py-3">{built}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--muted-dim)]">{lives}</td>
                 </tr>
               ))}
             </tbody>
@@ -126,42 +124,42 @@ export default async function HowItWorksPage() {
 
       <Section title="Data sources">
         <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-            <h3 className="font-medium text-white">Google News RSS</h3>
-            <p className="mt-1 text-zinc-400">
+          <div className="panel p-5 text-sm">
+            <h3 className="font-semibold">Google News RSS</h3>
+            <p className="mt-1 leading-relaxed text-[var(--muted)]">
               No key. One query per artist and per alias against the India feed
-              (<code className="text-zinc-300">hl=en-IN&amp;gl=IN&amp;ceid=IN:en</code>), restricted
-              to the last 14 days with <code className="text-zinc-300">when:14d</code>.
+              (<code className="text-white">hl=en-IN&amp;gl=IN&amp;ceid=IN:en</code>), restricted
+              to the last 14 days with <code className="text-white">when:14d</code>.
             </p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-            <h3 className="font-medium text-white">Tavily Search API</h3>
-            <p className="mt-1 text-zinc-400">
-              <code className="text-zinc-300">search_depth: basic</code>,{' '}
-              <code className="text-zinc-300">include_answer: false</code>, country India. Platform
+          <div className="panel p-5 text-sm">
+            <h3 className="font-semibold">Tavily Search API</h3>
+            <p className="mt-1 leading-relaxed text-[var(--muted)]">
+              <code className="text-white">search_depth: basic</code>,{' '}
+              <code className="text-white">include_answer: false</code>, country India. Platform
               sweeps run at most every {SWEEP_MIN_GAP_HOURS} h across these verified ticketing
               sites: {TICKETING_DOMAINS.join(', ')}. Starred artists get one query a day, capped at{' '}
               {MAX_PRIORITY_ARTISTS_PER_DAY}.
             </p>
-            <ul className="mt-2 space-y-0.5 text-xs text-zinc-500">
+            <ul className="mt-2 space-y-0.5 text-xs text-[var(--muted-dim)]">
               {SWEEP_QUERIES.map((query) => (
                 <li key={query}>“{query}”</li>
               ))}
             </ul>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-            <h3 className="font-medium text-white">Spotify Web API</h3>
-            <p className="mt-1 text-zinc-400">
-              Authorization Code flow, scope <code className="text-zinc-300">user-follow-read</code>,
-              cursor-paginated over <code className="text-zinc-300">/me/following</code>. Optional —
+          <div className="panel p-5 text-sm">
+            <h3 className="font-semibold">Spotify Web API</h3>
+            <p className="mt-1 leading-relaxed text-[var(--muted)]">
+              Authorization Code flow, scope <code className="text-white">user-follow-read</code>,
+              cursor-paginated over <code className="text-white">/me/following</code>. Optional —
               the system works fully on manual and CSV import.
             </p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-            <h3 className="font-medium text-white">Gemini grounding</h3>
-            <p className="mt-1 text-zinc-400">
+          <div className="panel p-5 text-sm">
+            <h3 className="font-semibold">Gemini grounding</h3>
+            <p className="mt-1 leading-relaxed text-[var(--muted)]">
               An optional third source for starred artists, behind{' '}
-              <code className="text-zinc-300">ENABLE_GEMINI_GROUNDING</code>. Currently{' '}
+              <code className="text-white">ENABLE_GEMINI_GROUNDING</code>. Currently{' '}
               <span className={ENABLE_GEMINI_GROUNDING() ? 'text-emerald-300' : 'text-zinc-300'}>
                 {ENABLE_GEMINI_GROUNDING() ? 'on' : 'off'}
               </span>
@@ -172,11 +170,11 @@ export default async function HowItWorksPage() {
       </Section>
 
       <Section title="AI calls">
-        <p className="mt-1 text-sm text-zinc-400">
-          Every task runs on <code className="text-zinc-200">{model}</code> through the official{' '}
-          <code className="text-zinc-200">@google/genai</code> SDK, with structured JSON output
+        <p className="mt-1 max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+          Every task runs on <code className="font-medium text-white">{model}</code> through the official{' '}
+          <code className="font-medium text-white">@google/genai</code> SDK, with structured JSON output
           validated by zod and one retry on invalid output. No other LLM is used anywhere in this
-          app. Counts below are live from the <code className="text-zinc-200">ai_calls</code> table
+          app. Counts below are live from the <code className="font-medium text-white">ai_calls</code> table
           {latest[0] ? ` — last call ${formatRelative(latest[0].createdAt)}` : ''}.
         </p>
         <div className="mt-3 space-y-3">
@@ -185,22 +183,22 @@ export default async function HowItWorksPage() {
             return (
               <div
                 key={task.task}
-                className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm"
+                className="panel p-5 text-sm"
               >
                 <div className="flex flex-wrap items-baseline gap-2">
-                  <h3 className="font-medium text-white">{task.title}</h3>
-                  <code className="rounded bg-white/5 px-1.5 py-0.5 text-xs text-zinc-300">
+                  <h3 className="font-semibold">{task.title}</h3>
+                  <code className="rounded-md border border-[var(--line)] bg-[var(--panel-raised)] px-1.5 py-0.5 text-xs">
                     {row?.model ?? model}
                   </code>
-                  <span className="ml-auto font-mono text-xs text-zinc-500">{task.file}</span>
+                  <span className="ml-auto font-mono text-xs text-[var(--muted-dim)]">{task.file}</span>
                 </div>
-                <p className="mt-2 text-zinc-400">
+                <p className="mt-2 text-[var(--muted)]">
                   <span className="text-zinc-500">In:</span> {task.input}
                 </p>
-                <p className="text-zinc-400">
+                <p className="text-[var(--muted)]">
                   <span className="text-zinc-500">Out:</span> {task.output}
                 </p>
-                <p className="mt-2 text-xs text-zinc-500">
+                <p className="mt-2 text-xs text-[var(--muted-dim)]">
                   {row
                     ? `${row.calls} calls · ${row.failed} failed · ${row.avgMs} ms average · ${row.inputTokens.toLocaleString('en-IN')} in / ${row.outputTokens.toLocaleString('en-IN')} out tokens`
                     : 'No calls yet.'}
@@ -212,35 +210,35 @@ export default async function HowItWorksPage() {
       </Section>
 
       <Section title="Rules">
-        <ul className="mt-3 space-y-2 text-sm text-zinc-400">
+        <ul className="panel mt-3 space-y-3 p-5 text-sm leading-relaxed text-[var(--muted)]">
           <li>
-            <span className="text-zinc-200">Batching.</span> Up to {ARTIST_BATCH_SIZE} due artists
+            <span className="font-medium text-white">Batching.</span> Up to {ARTIST_BATCH_SIZE} due artists
             per scan, starred first. Starred artists return in {STARRED_RECHECK_HOURS} h, the rest
             in {UNSTARRED_RECHECK_HOURS} h, so every function finishes well inside the limit.
           </li>
           <li>
-            <span className="text-zinc-200">Deduplication.</span> A{' '}
-            <code className="text-zinc-300">url_hash</code> of the canonical URL keeps an article
+            <span className="font-medium text-white">Deduplication.</span> A{' '}
+            <code className="text-white">url_hash</code> of the canonical URL keeps an article
             from being processed twice; items older than {MAX_ITEM_AGE_DAYS} days are dropped.
             Shows are keyed by{' '}
-            <code className="text-zinc-300">artist_id|normalised_city|event_date</code>, with
+            <code className="text-white">artist_id|normalised_city|event_date</code>, with
             Bangalore, Gurgaon, Bombay and New Delhi normalised.
           </li>
           <li>
-            <span className="text-zinc-200">Priority, decided in code.</span> P0 Bengaluru with an
+            <span className="font-medium text-white">Priority, decided in code.</span> P0 Bengaluru with an
             early bird open or imminent; P1 Bengaluru, or any Indian city with an early bird open
             and a deadline inside {EARLY_BIRD_DEADLINE_SOON_HOURS} h; P2 any other Indian city; P3
             confidence below {LOW_CONFIDENCE_MAX}, which is shown on the dashboard but never
             pushed.
           </li>
           <li>
-            <span className="text-zinc-200">Alerts.</span> One per{' '}
-            <code className="text-zinc-300">show_id|alert_type|channel|change_ref</code>, enforced
+            <span className="font-medium text-white">Alerts.</span> One per{' '}
+            <code className="text-white">show_id|alert_type|channel|change_ref</code>, enforced
             by a unique constraint, so a duplicate is impossible even if two scans overlap. Shows
             whose early-bird window closes within {EARLY_BIRD_REMINDER_HOURS} h get one reminder.
           </li>
           <li>
-            <span className="text-zinc-200">Time.</span> Everything is stored in UTC and displayed
+            <span className="font-medium text-white">Time.</span> Everything is stored in UTC and displayed
             in Asia/Kolkata.
           </li>
         </ul>
