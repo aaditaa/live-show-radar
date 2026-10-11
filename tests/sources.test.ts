@@ -98,3 +98,35 @@ describe('nextCheckAt', () => {
     expect(UNSTARRED_RECHECK_HOURS).toBe(6);
   });
 });
+
+describe('priority Tavily checks', () => {
+  // pickPriorityArtists hits the database, so the ordering rule is asserted
+  // against the same shape it sorts: never-checked first, then starred.
+  type Row = { id: string; isStarred: boolean; lastCheckedAt: Date | null };
+
+  function order(batch: Row[]): string[] {
+    return [
+      ...batch.filter((a) => a.lastCheckedAt === null),
+      ...batch.filter((a) => a.lastCheckedAt !== null && a.isStarred),
+    ].map((a) => a.id);
+  }
+
+  it('puts a brand new artist ahead of an established starred one', () => {
+    expect(
+      order([
+        { id: 'starred-old', isStarred: true, lastCheckedAt: new Date('2026-10-01') },
+        { id: 'brand-new', isStarred: false, lastCheckedAt: null },
+      ]),
+    ).toEqual(['brand-new', 'starred-old']);
+  });
+
+  it('includes an unstarred artist that has never been checked', () => {
+    expect(order([{ id: 'gorillaz', isStarred: false, lastCheckedAt: null }])).toEqual(['gorillaz']);
+  });
+
+  it('excludes an unstarred artist that has already been checked', () => {
+    expect(
+      order([{ id: 'seen', isStarred: false, lastCheckedAt: new Date('2026-10-01') }]),
+    ).toEqual([]);
+  });
+});

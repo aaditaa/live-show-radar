@@ -45,17 +45,28 @@ export async function shouldRunSweep(now: Date = new Date()): Promise<boolean> {
 }
 
 /**
- * Starred artists get one Tavily query a day, at most 10 a day. Eligibility is
- * derived from when we last stored a Tavily item for that artist, so it needs
- * no extra column and survives restarts.
+ * Who gets a Tavily query this scan.
+ *
+ * Starred artists, once a day — and every artist that has never been checked
+ * before. A new artist has no history at all, and Google News alone is a poor
+ * first look: it only reaches back 14 days and favours wherever the artist is
+ * touring now, so an India listing that lives on a ticketing site would be
+ * missed until someone thought to star them.
+ *
+ * Eligibility is derived from when we last stored a Tavily item for that
+ * artist, so it needs no extra column and survives restarts.
  */
 export async function pickPriorityArtists(
   batch: readonly BatchArtist[],
   now: Date = new Date(),
   maxArtists: number = MAX_PRIORITY_ARTISTS_PER_DAY,
 ): Promise<BatchArtist[]> {
-  const starred = batch.filter((artist) => artist.isStarred);
-  if (starred.length === 0) return [];
+  // Never-checked artists first: they are the ones with nothing on record.
+  const candidates = [
+    ...batch.filter((artist) => artist.lastCheckedAt === null),
+    ...batch.filter((artist) => artist.lastCheckedAt !== null && artist.isStarred),
+  ];
+  if (candidates.length === 0) return [];
 
   const rows = await db
     .select({ artistId: sourceItems.artistId, lastAt: max(sourceItems.fetchedAt) })
@@ -66,7 +77,7 @@ export async function pickPriorityArtists(
   const lastChecked = new Map(rows.map((row) => [row.artistId, row.lastAt]));
   const gapMs = PRIORITY_CHECK_MIN_GAP_HOURS * 60 * 60 * 1000;
 
-  return starred
+  return candidates
     .filter((artist) => {
       const last = lastChecked.get(artist.id);
       return !last || now.getTime() - new Date(last).getTime() >= gapMs;
