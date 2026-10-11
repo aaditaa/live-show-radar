@@ -77,6 +77,45 @@ export default async function ArtistsPage({
         error={params.error}
       />
 
+      {isAdmin ? (
+        <div className="mt-5 flex">
+      <section className="panel w-full max-w-md p-5 lg:ml-auto">
+          <h2 className="text-sm font-semibold">Add artists</h2>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Search Spotify&apos;s catalogue and add anyone, followed or not. Added artists are
+            scanned exactly like the rest.
+          </p>
+          <div className="mt-3">
+            <ArtistSearch />
+          </div>
+
+          <details className="mt-4 border-t border-[var(--line)] pt-3">
+            <summary className="cursor-pointer text-xs text-[var(--muted)] hover:text-white">
+              Paste or import a CSV instead
+            </summary>
+            <p className="mt-2 text-xs text-[var(--muted-dim)]">
+              One name per line. Optional second column for aliases, quoted if it contains
+              commas. Works with no Spotify connection at all.
+            </p>
+            <form action={importArtistsAction} className="mt-2 space-y-2">
+              <textarea
+                name="artists"
+                rows={4}
+                placeholder={'Prateek Kuhad\nRitviz, "Ritviz Srivastava"'}
+                className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] px-3 py-2.5 font-mono text-xs placeholder:text-[var(--muted-dim)]"
+              />
+              <button
+                type="submit"
+                className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
+              >
+                Import
+              </button>
+            </form>
+          </details>
+        </section>
+        </div>
+      ) : null}
+
       <div className="panel mt-6 overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-[var(--line)] text-[11px] uppercase tracking-[0.08em] text-[var(--muted-dim)]">
@@ -244,12 +283,12 @@ export default async function ArtistsPage({
       ) : null}
 
       {isAdmin ? (
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="mt-4">
           <section className="panel p-5">
             <h2 className="text-sm font-semibold">Spotify</h2>
             <p className="mt-1 text-xs text-[var(--muted)]">
               {spotifyConnected
-                ? `Connected${currentUser?.spotifyUserId ? ` as ${currentUser.spotifyUserId}` : ''}. Syncing never removes manual or demo artists; unfollowed Spotify artists are deactivated, not deleted.`
+                ? `Connected${currentUser?.spotifyUserId ? ` as ${currentUser.spotifyUserId}` : ''}. A sync never touches artists you added yourself; an artist you unfollow on Spotify is deactivated, not deleted.`
                 : 'Not connected. Authorises read-only access to who you follow (scope user-follow-read).'}{' '}
               Fetching images looks artists up by name and never changes their source, which
               records how they joined the list and drives what a sync may deactivate.
@@ -287,40 +326,7 @@ export default async function ArtistsPage({
             ) : null}
           </section>
 
-          <section className="panel p-5">
-            <h2 className="text-sm font-semibold">Add artists</h2>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              Search Spotify&apos;s catalogue and add anyone, followed or not. Added artists are
-              scanned exactly like the rest.
-            </p>
-            <div className="mt-3">
-              <ArtistSearch />
-            </div>
 
-            <details className="mt-4 border-t border-[var(--line)] pt-3">
-              <summary className="cursor-pointer text-xs text-[var(--muted)] hover:text-white">
-                Paste or import a CSV instead
-              </summary>
-              <p className="mt-2 text-xs text-[var(--muted-dim)]">
-                One name per line. Optional second column for aliases, quoted if it contains
-                commas. Works with no Spotify connection at all.
-              </p>
-              <form action={importArtistsAction} className="mt-2 space-y-2">
-                <textarea
-                  name="artists"
-                  rows={4}
-                  placeholder={'Prateek Kuhad\nRitviz, "Ritviz Srivastava"'}
-                  className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] px-3 py-2.5 font-mono text-xs placeholder:text-[var(--muted-dim)]"
-                />
-                <button
-                  type="submit"
-                  className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
-                >
-                  Import
-                </button>
-              </form>
-            </details>
-          </section>
         </div>
       ) : null}
 
