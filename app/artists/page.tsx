@@ -76,6 +76,89 @@ export default async function ArtistsPage({
         error={params.error}
       />
 
+      <div className="panel mt-6 overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-[var(--line)] text-[11px] uppercase tracking-[0.08em] text-[var(--muted-dim)]">
+            <tr>
+              {isAdmin ? <th className="px-4 py-3 font-medium">Star</th> : null}
+              <th className="px-4 py-3 font-medium">Artist</th>
+              <th className="px-4 py-3 font-medium">Aliases</th>
+              <th className="px-4 py-3 font-medium">Source</th>
+              <th className="px-4 py-3 font-medium">Last check</th>
+              <th className="px-4 py-3 font-medium">Next check</th>
+              {isAdmin ? <th className="px-4 py-3 font-medium">Remove</th> : null}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--line)]">
+            {rows.map((artist) => (
+              <tr
+                key={artist.id}
+                className={artist.isActive ? 'text-[var(--muted)] transition hover:bg-white/[0.02]' : 'text-[var(--muted-dim)] line-through'}
+              >
+                {isAdmin ? (
+                  <td className="px-4 py-3">
+                    <form action={toggleStarAction}>
+                      <input type="hidden" name="artistId" value={artist.id} />
+                      <button
+                        type="submit"
+                        title={artist.isStarred ? 'Unstar' : 'Star'}
+                        className={
+                          artist.isStarred
+                            ? 'text-amber-300 transition hover:text-amber-200'
+                            : 'text-[var(--muted-dim)] transition hover:text-amber-300'
+                        }
+                      >
+                        <IconStar filled={artist.isStarred} />
+                      </button>
+                    </form>
+                  </td>
+                ) : null}
+                <td className="px-4 py-3 font-medium text-white">
+                  <span className="flex items-center gap-2.5">
+                    <ArtistAvatar name={artist.name} imageUrl={artist.imageUrl} size="sm" />
+                    <span className="truncate">
+                      {!isAdmin && artist.isStarred ? (
+                        <IconStar filled className="mr-1 inline h-3.5 w-3.5 text-amber-300" />
+                      ) : null}
+                      {artist.name}
+                    </span>
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-[var(--muted-dim)]">
+                  {artist.aliases.length > 0 ? artist.aliases.join(', ') : '—'}
+                </td>
+                <td className="px-4 py-3">
+                  <span className="rounded-full border border-[var(--line)] bg-[var(--panel-raised)] px-2 py-0.5 text-[11px]">
+                    {SOURCE_LABEL[artist.source] ?? artist.source}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-[var(--muted-dim)]">
+                  {artist.lastCheckedAt ? formatRelative(artist.lastCheckedAt) : 'never'}
+                </td>
+                <td className="px-4 py-3 text-[var(--muted-dim)]">
+                  {formatIstDateTime(artist.nextCheckAt)}
+                </td>
+                {isAdmin ? (
+                  <td className="px-4 py-3">
+                    <form action={removeArtistAction}>
+                      <input type="hidden" name="artistId" value={artist.id} />
+                      <button
+                        type="submit"
+                        title={`Remove ${artist.name} and any shows found for them`}
+                        className="text-[var(--muted-dim)] transition hover:text-rose-300"
+                      >
+                        <IconTrash className="h-4 w-4" />
+                      </button>
+                    </form>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 className="mt-10 text-[15px] font-semibold">Manage</h2>
       <AdminBar />
 
       {isAdmin ? (
@@ -224,87 +307,6 @@ export default async function ArtistsPage({
         </section>
       ) : null}
 
-      <div className="panel mt-6 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-[var(--line)] text-[11px] uppercase tracking-[0.08em] text-[var(--muted-dim)]">
-            <tr>
-              {isAdmin ? <th className="px-4 py-3 font-medium">Star</th> : null}
-              <th className="px-4 py-3 font-medium">Artist</th>
-              <th className="px-4 py-3 font-medium">Aliases</th>
-              <th className="px-4 py-3 font-medium">Source</th>
-              <th className="px-4 py-3 font-medium">Last check</th>
-              <th className="px-4 py-3 font-medium">Next check</th>
-              {isAdmin ? <th className="px-4 py-3 font-medium">Remove</th> : null}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--line)]">
-            {rows.map((artist) => (
-              <tr
-                key={artist.id}
-                className={artist.isActive ? 'text-[var(--muted)] transition hover:bg-white/[0.02]' : 'text-[var(--muted-dim)] line-through'}
-              >
-                {isAdmin ? (
-                  <td className="px-4 py-3">
-                    <form action={toggleStarAction}>
-                      <input type="hidden" name="artistId" value={artist.id} />
-                      <button
-                        type="submit"
-                        title={artist.isStarred ? 'Unstar' : 'Star'}
-                        className={
-                          artist.isStarred
-                            ? 'text-amber-300 transition hover:text-amber-200'
-                            : 'text-[var(--muted-dim)] transition hover:text-amber-300'
-                        }
-                      >
-                        <IconStar filled={artist.isStarred} />
-                      </button>
-                    </form>
-                  </td>
-                ) : null}
-                <td className="px-4 py-3 font-medium text-white">
-                  <span className="flex items-center gap-2.5">
-                    <ArtistAvatar name={artist.name} imageUrl={artist.imageUrl} size="sm" />
-                    <span className="truncate">
-                      {!isAdmin && artist.isStarred ? (
-                        <IconStar filled className="mr-1 inline h-3.5 w-3.5 text-amber-300" />
-                      ) : null}
-                      {artist.name}
-                    </span>
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-[var(--muted-dim)]">
-                  {artist.aliases.length > 0 ? artist.aliases.join(', ') : '—'}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="rounded-full border border-[var(--line)] bg-[var(--panel-raised)] px-2 py-0.5 text-[11px]">
-                    {SOURCE_LABEL[artist.source] ?? artist.source}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-[var(--muted-dim)]">
-                  {artist.lastCheckedAt ? formatRelative(artist.lastCheckedAt) : 'never'}
-                </td>
-                <td className="px-4 py-3 text-[var(--muted-dim)]">
-                  {formatIstDateTime(artist.nextCheckAt)}
-                </td>
-                {isAdmin ? (
-                  <td className="px-4 py-3">
-                    <form action={removeArtistAction}>
-                      <input type="hidden" name="artistId" value={artist.id} />
-                      <button
-                        type="submit"
-                        title={`Remove ${artist.name} and any shows found for them`}
-                        className="text-[var(--muted-dim)] transition hover:text-rose-300"
-                      >
-                        <IconTrash className="h-4 w-4" />
-                      </button>
-                    </form>
-                  </td>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </>
   );
 }
