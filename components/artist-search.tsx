@@ -20,7 +20,8 @@ function formatFollowers(count: number | null): string | null {
   return `${count} listeners`;
 }
 
-export function ArtistSearch() {
+export function ArtistSearch({ variant = 'panel' }: { variant?: 'panel' | 'header' } = {}) {
+  const header = variant === 'header';
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Result[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +81,7 @@ export function ArtistSearch() {
   }
 
   return (
-    <div>
+    <div className={header ? 'relative w-full sm:w-72' : undefined}>
       <label className="sr-only" htmlFor="artist-search">
         Search Spotify for an artist
       </label>
@@ -91,10 +92,20 @@ export function ArtistSearch() {
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search Spotify for an artist…"
         autoComplete="off"
-        className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] px-4 py-2.5 text-sm placeholder:text-[var(--muted-dim)] focus:border-[var(--accent)] focus:outline-none"
+        className={`w-full rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] text-sm placeholder:text-[var(--muted-dim)] focus:border-[var(--accent)] focus:outline-none ${
+          header ? 'px-3.5 py-2' : 'px-4 py-2.5'
+        }`}
       />
 
-      <div className="mt-3 min-h-[2rem]">
+      <div
+        className={
+          header
+            ? `absolute left-0 right-0 top-full z-30 mt-2 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-2 shadow-xl shadow-black/40 ${
+                active ? '' : 'hidden'
+              }`
+            : 'mt-3 min-h-[2rem]'
+        }
+      >
         {active && error ? (
           <p className="text-xs text-rose-300">{error}</p>
         ) : active && searching && visible.length === 0 ? (
@@ -140,7 +151,7 @@ export function ArtistSearch() {
               );
             })}
           </ul>
-        ) : (
+        ) : header ? null : (
           <p className="text-xs text-[var(--muted-dim)]">
             Type at least two characters. Results come from Spotify&apos;s artist catalogue.
           </p>

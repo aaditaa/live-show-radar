@@ -66,6 +66,7 @@ export default async function ArtistsPage({
   return (
     <>
       <PageHeader
+        action={isAdmin ? <ArtistSearch variant="header" /> : undefined}
         title="Artists"
         subtitle={`${rows.length} watched · ${counts.spotify} from Spotify · ${counts.manual} added manually${
           counts.inactive > 0 ? ` · ${counts.inactive} inactive` : ''
@@ -77,44 +78,7 @@ export default async function ArtistsPage({
         error={params.error}
       />
 
-      {isAdmin ? (
-        <div className="mt-5 flex">
-      <section className="panel w-full max-w-md p-5 lg:ml-auto">
-          <h2 className="text-sm font-semibold">Add artists</h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            Search Spotify&apos;s catalogue and add anyone, followed or not. Added artists are
-            scanned exactly like the rest.
-          </p>
-          <div className="mt-3">
-            <ArtistSearch />
-          </div>
 
-          <details className="mt-4 border-t border-[var(--line)] pt-3">
-            <summary className="cursor-pointer text-xs text-[var(--muted)] hover:text-white">
-              Paste or import a CSV instead
-            </summary>
-            <p className="mt-2 text-xs text-[var(--muted-dim)]">
-              One name per line. Optional second column for aliases, quoted if it contains
-              commas. Works with no Spotify connection at all.
-            </p>
-            <form action={importArtistsAction} className="mt-2 space-y-2">
-              <textarea
-                name="artists"
-                rows={4}
-                placeholder={'Prateek Kuhad\nRitviz, "Ritviz Srivastava"'}
-                className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] px-3 py-2.5 font-mono text-xs placeholder:text-[var(--muted-dim)]"
-              />
-              <button
-                type="submit"
-                className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
-              >
-                Import
-              </button>
-            </form>
-          </details>
-        </section>
-        </div>
-      ) : null}
 
       <div className="panel mt-6 overflow-x-auto">
         <table className="w-full text-left text-sm">
@@ -197,6 +161,8 @@ export default async function ArtistsPage({
           </tbody>
         </table>
       </div>
+
+
 
       <h2 className="mt-10 text-[15px] font-semibold">Manage</h2>
       {isAdmin || suggestions.length > 0 ? (
@@ -324,6 +290,30 @@ export default async function ArtistsPage({
                 Server is missing SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET.
               </p>
             ) : null}
+
+          <details className="mt-4 border-t border-[var(--line)] pt-3">
+            <summary className="cursor-pointer text-xs text-[var(--muted)] hover:text-white">
+              Paste or import a CSV instead
+            </summary>
+            <p className="mt-2 text-xs text-[var(--muted-dim)]">
+              One name per line. Optional second column for aliases, quoted if it contains
+              commas. Works with no Spotify connection at all.
+            </p>
+            <form action={importArtistsAction} className="mt-2 space-y-2">
+              <textarea
+                name="artists"
+                rows={4}
+                placeholder={'Prateek Kuhad\nRitviz, "Ritviz Srivastava"'}
+                className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] px-3 py-2.5 font-mono text-xs placeholder:text-[var(--muted-dim)]"
+              />
+              <button
+                type="submit"
+                className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
+              >
+                Import
+              </button>
+            </form>
+          </details>
           </section>
 
 
