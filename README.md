@@ -6,7 +6,11 @@ An AI-powered live-show alert system for one user, Karan (home city Bengaluru). 
 concert and festival announcements in India for every artist he follows and alerts him the moment
 a show is announced, with special attention to early-bird ticket windows.
 
-The dashboard is public and read-only. Admin actions sit behind a password.
+**The whole app is behind the admin password.** Visiting any page redirects to `/admin` to sign
+in. Scheduled scans are unaffected: they authenticate with `CRON_SECRET`, not the session.
+
+> This is a deliberate departure from the original brief, which asked for a public read-only
+> dashboard. Anyone who needs to look around, including a reviewer, needs `ADMIN_PASSWORD`.
 
 ---
 
@@ -148,8 +152,8 @@ Use `127.0.0.1`, not `localhost` — Spotify no longer accepts `localhost` as a 
 | `npm run telegram:chat-id` | Print your Telegram chat ID after sending `/start` |
 
 Pages: `/` dashboard, `/calendar` month grid, `/artists` (search, star, remove, suggestions),
-`/alerts`, `/scans`, `/how-it-works`, and `/admin` for the password sign-in. Everything except
-`/admin` is public and read-only.
+`/alerts`, `/scans`, `/how-it-works`, and `/admin` for the password sign-in. Every page except
+`/admin` requires a signed-in session, enforced in `middleware.ts`.
 
 Trigger a scan locally:
 
@@ -226,3 +230,7 @@ values. Nothing in this repo logs or prints a secret, and Spotify tokens never l
   and displayed as "December 2026". A show with no date at all displays "TBA".
 - **One user.** The schema supports many, but the scan and the alert path both assume a single
   user row.
+- **There is no public view.** `middleware.ts` gates every page on the admin session, so a
+  reviewer cannot see the dashboard without the password. To restore the brief's public
+  read-only behaviour, delete `middleware.ts`; the per-action checks behind it already
+  distinguish admin from visitor on their own.

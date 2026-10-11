@@ -16,14 +16,12 @@ export async function AdminBar() {
   if (!isAdmin) {
     return (
       <div className="panel mt-5 flex flex-wrap items-center gap-3 p-5">
-        <p className="text-sm text-[var(--muted)]">
-          This page is public and read-only. Admin actions need a password.
-        </p>
+        <p className="text-sm text-[var(--muted)]">Your session has ended.</p>
         <Link
           href="/admin?next=%2Fartists"
           className="ml-auto rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
         >
-          Admin sign in
+          Sign in again
         </Link>
       </div>
     );

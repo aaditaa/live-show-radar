@@ -31,7 +31,7 @@ export default async function AdminPage({
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Admin</h1>
             <p className="text-xs text-[var(--muted)]">
-              {isAdmin ? 'You are signed in.' : 'Sign in to run scans and manage artists.'}
+              {isAdmin ? 'You are signed in.' : 'Sign in to open Live Show Radar.'}
             </p>
           </div>
         </div>
@@ -104,8 +104,9 @@ export default async function AdminPage({
             </form>
 
             <p className="mt-4 border-t border-[var(--line)] pt-4 text-xs leading-relaxed text-[var(--muted-dim)]">
-              Everything else in this app is public and read-only — the dashboard, calendar,
-              artists, alert history and scan logs all work without signing in.
+              The whole app is behind this password: the dashboard, calendar, artists, alert
+              history and scan logs all need it. Scheduled scans keep running regardless — they
+              authenticate with their own token.
             </p>
           </>
         )}
