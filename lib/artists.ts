@@ -1,7 +1,8 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { artists, type User } from '@/db/schema';
 import { db } from '@/lib/db';
-import { getAccessToken, getFollowedArtists } from '@/lib/spotify';
+import { findArtistImage, getAccessToken, getFollowedArtists } from '@/lib/spotify';
+import { errorMessage, mapWithConcurrency } from '@/lib/http';
 
 export type ImportedArtist = { name: string; aliases: string[] };
 
@@ -183,5 +184,54 @@ export async function syncSpotifyArtists(user: User): Promise<SyncResult> {
     added,
     reactivated,
     unfollowed: deactivated.length,
+  };
+}
+
+export type ImageBackfillResult = { checked: number; found: number; missed: number; error?: string };
+
+/**
+ * Fill in artist images from Spotify for anyone missing one, whatever their
+ * source. This is a lookup of public artist data, so it does not imply the
+ * artist came from the follow list and never changes `source` — that records
+ * how the artist got onto the list, and the sync relies on it.
+ */
+export async function backfillArtistImages(
+  user: User,
+  limit = 40,
+): Promise<ImageBackfillResult> {
+  const missing = await db
+    .select({ id: artists.id, name: artists.name, aliases: artists.aliases })
+    .from(artists)
+    .where(and(eq(artists.userId, user.id), isNull(artists.imageUrl)))
+    .limit(limit);
+
+  if (missing.length === 0) return { checked: 0, found: 0, missed: 0 };
+
+  let found = 0;
+  let firstError: string | undefined;
+
+  const results = await mapWithConcurrency(missing, 4, async (artist) => {
+    const match = await findArtistImage(artist.name, artist.aliases);
+    if (!match) return false;
+    await db
+      .update(artists)
+      .set({ imageUrl: match.imageUrl })
+      .where(eq(artists.id, artist.id));
+    return true;
+  });
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      if (result.value) found += 1;
+    } else if (!firstError) {
+      firstError = errorMessage(result.reason);
+    }
+  }
+
+  return {
+    checked: missing.length,
+    found,
+    missed: missing.length - found,
+    ...(firstError ? { error: firstError } : {}),
   };
 }

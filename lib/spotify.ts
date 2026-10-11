@@ -144,6 +144,85 @@ export async function getAccessToken(user: User): Promise<string | null> {
 
 export type SpotifyArtist = { id: string; name: string; imageUrl: string | null };
 
+/**
+ * App-level token, no user involved. Used for artist lookups, which need no
+ * user scope — an artist's public image is the same for everyone.
+ */
+let appToken: { value: string; expiresAt: number } | undefined;
+
+export async function getAppToken(): Promise<string> {
+  if (appToken && appToken.expiresAt - 60_000 > Date.now()) return appToken.value;
+
+  const response = await fetchWithRetry(
+    TOKEN_URL,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: basicAuthHeader(),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    },
+    { timeoutMs: 10_000, label: 'spotify app token' },
+  );
+
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error_description ?? body.error ?? `HTTP ${response.status}`);
+
+  appToken = {
+    value: body.access_token as string,
+    expiresAt: Date.now() + (body.expires_in as number) * 1000,
+  };
+  return appToken.value;
+}
+
+/** Compare names ignoring case, punctuation, accents and a leading "the". */
+function nameKey(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/^the\s+/, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Find an artist's image by name.
+ *
+ * Search is fuzzy, so the result is only accepted when the returned name
+ * matches the one we asked for. Putting the wrong face on an artist is worse
+ * than showing no face at all — "Eagles" and "Queen" both have near-misses.
+ */
+export async function findArtistImage(
+  name: string,
+  aliases: readonly string[] = [],
+): Promise<{ imageUrl: string; spotifyName: string } | null> {
+  const token = await getAppToken();
+  const response = await fetchWithRetry(
+    `${API}/search?q=${encodeURIComponent(name)}&type=artist&limit=5`,
+    { headers: { Authorization: `Bearer ${token}` } },
+    { timeoutMs: 10_000, label: `spotify search ${name}` },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Spotify search failed with HTTP ${response.status}`);
+  }
+
+  const body = (await response.json()) as {
+    artists?: { items?: { name: string; images?: { url: string }[] }[] };
+  };
+
+  const acceptable = new Set([nameKey(name), ...aliases.map(nameKey)]);
+
+  for (const item of body.artists?.items ?? []) {
+    if (!acceptable.has(nameKey(item.name))) continue;
+    const imageUrl = item.images?.[0]?.url;
+    if (imageUrl) return { imageUrl, spotifyName: item.name };
+  }
+
+  return null;
+}
+
 type FollowingResponse = {
   artists: {
     items: { id: string; name: string; images?: { url: string }[] }[];

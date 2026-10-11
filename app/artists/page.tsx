@@ -12,6 +12,7 @@ import { Flash } from '@/components/flash';
 import {
   acceptSuggestionAction,
   dismissSuggestionAction,
+  fetchArtistImagesAction,
   importArtistsAction,
   removeArtistAction,
   suggestArtistsAction,
@@ -84,7 +85,9 @@ export default async function ArtistsPage({
             <p className="mt-1 text-xs text-[var(--muted)]">
               {spotifyConnected
                 ? `Connected${currentUser?.spotifyUserId ? ` as ${currentUser.spotifyUserId}` : ''}. Syncing never removes manual or demo artists; unfollowed Spotify artists are deactivated, not deleted.`
-                : 'Not connected. Authorises read-only access to who you follow (scope user-follow-read).'}
+                : 'Not connected. Authorises read-only access to who you follow (scope user-follow-read).'}{' '}
+              Fetching images looks artists up by name and never changes their source, which
+              records how they joined the list and drives what a sync may deactivate.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <a
@@ -93,6 +96,14 @@ export default async function ArtistsPage({
               >
                 {spotifyConnected ? 'Reconnect Spotify' : 'Connect Spotify'}
               </a>
+              <form action={fetchArtistImagesAction}>
+                <button
+                  type="submit"
+                  className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
+                >
+                  Fetch images
+                </button>
+              </form>
               {spotifyConnected ? (
                 <form action={syncSpotifyAction}>
                   <button

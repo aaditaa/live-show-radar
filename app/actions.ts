@@ -7,7 +7,7 @@ import { and, count, eq, not } from 'drizzle-orm';
 import { artistSuggestions, artists, shows, users } from '@/db/schema';
 import { db } from '@/lib/db';
 import { ADMIN_COOKIE, adminSessionToken, checkAdminPassword, hasAdminSession } from '@/lib/auth';
-import { importArtists, syncSpotifyArtists } from '@/lib/artists';
+import { backfillArtistImages, importArtists, syncSpotifyArtists } from '@/lib/artists';
 import { optionalEnv } from '@/lib/env';
 import { errorMessage } from '@/lib/http';
 import { suggestArtists } from '@/lib/ai/suggest';
@@ -98,7 +98,11 @@ export async function syncSpotifyAction(): Promise<void> {
     const user = (await db.select().from(users).limit(1))[0];
     if (!user) throw new Error('No user row exists yet. Run npm run db:seed.');
     const result = await syncSpotifyArtists(user);
-    return `Synced ${result.fetched} followed artists: ${result.added} added, ${result.reactivated} reactivated, ${result.unfollowed} deactivated.`;
+    // Pick up images for anyone still missing one, whatever their source.
+    const images = await backfillArtistImages(user);
+    return `Synced ${result.fetched} followed artists: ${result.added} added, ${result.reactivated} reactivated, ${result.unfollowed} deactivated.${
+      images.checked > 0 ? ` Found ${images.found} new artist images.` : ''
+    }`;
   });
 }
 
@@ -232,5 +236,21 @@ export async function dismissSuggestionAction(formData: FormData): Promise<void>
       .returning({ name: artistSuggestions.name });
     if (!dismissed) throw new Error('That suggestion no longer exists.');
     return `Dismissed ${dismissed.name}.`;
+  });
+}
+
+export async function fetchArtistImagesAction(): Promise<void> {
+  await runAdminAction('/artists', async () => {
+    const user = (await db.select().from(users).limit(1))[0];
+    if (!user) throw new Error('No user row exists yet. Run npm run db:seed.');
+
+    const result = await backfillArtistImages(user);
+    if (result.checked === 0) return 'Every artist already has an image.';
+    if (result.error) {
+      throw new Error(`Spotify lookup failed after ${result.found} images: ${result.error}`);
+    }
+    return `Checked ${result.checked} artists, found ${result.found} images${
+      result.missed > 0 ? `, ${result.missed} had no confident match` : ''
+    }.`;
   });
 }
