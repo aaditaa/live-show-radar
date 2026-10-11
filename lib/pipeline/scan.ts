@@ -27,6 +27,7 @@ import {
 } from '@/lib/pipeline/alerts';
 import type { RejectionReason } from '@/lib/pipeline/match';
 import { artists as artistsTable, users as usersTable } from '@/db/schema';
+import { syncSpotifyArtists } from '@/lib/artists';
 
 export const FETCH_CONCURRENCY = 5;
 export const FETCH_TIMEOUT_MS = 10_000;
@@ -43,6 +44,7 @@ export type ScanSummary = {
   artistNames: string[];
   sweepRan: boolean;
   priorityArtistChecks: number;
+  spotifySync: { ran: boolean; fetched?: number; added?: number; error?: string };
   itemsFetched: number;
   itemsNew: number;
   geminiCalls: number;
@@ -101,8 +103,13 @@ async function runJob(job: FetchJob) {
  * The scan orchestrator. A failure in one source or one artist is recorded in
  * `errors` and never fails the run.
  */
-export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
+export async function runScan(
+  trigger: ScanTrigger,
+  options: { syncSpotify?: boolean } = {},
+): Promise<ScanSummary> {
   const now = new Date();
+  // The daily Vercel cron refreshes the follow list before scanning.
+  const wantsSpotifySync = options.syncSpotify ?? trigger === 'vercel_cron';
 
   const [run] = await db.insert(scanRuns).values({ trigger }).returning();
   if (!run) throw new Error('Could not open a scan run');
@@ -113,6 +120,7 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
   let priorityArtists: BatchArtist[] = [];
   let itemsFetched = 0;
   let itemsNew = 0;
+  let spotifySync: ScanSummary['spotifySync'] = { ran: false };
   let geminiCalls = 0;
   let showsNew = 0;
   let showsUpdated = 0;
@@ -125,6 +133,21 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
     no_city: 0,
     unknown_artist: 0,
   };
+
+  if (wantsSpotifySync) {
+    // A Spotify failure must never stop the scan: it is one source of artists,
+    // not a prerequisite for checking the ones already stored.
+    try {
+      const user = (await db.select().from(usersTable).limit(1))[0];
+      if (user?.spotifyRefreshToken) {
+        const result = await syncSpotifyArtists(user);
+        spotifySync = { ran: true, fetched: result.fetched, added: result.added };
+      }
+    } catch (error) {
+      spotifySync = { ran: true, error: errorMessage(error) };
+      errors.push({ source: 'tavily', query: 'spotify sync', message: errorMessage(error) });
+    }
+  }
 
   try {
     batch = await pickArtistBatch(undefined, now);
@@ -259,6 +282,7 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
     artistNames: batch.map((artist) => artist.name),
     sweepRan,
     priorityArtistChecks: priorityArtists.length,
+    spotifySync,
     itemsFetched,
     itemsNew,
     geminiCalls,
