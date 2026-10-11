@@ -8,6 +8,7 @@ import { AdminBar } from '@/components/admin-bar';
 import { PageHeader } from '@/components/page-header';
 import { IconSparkle, IconStar, IconTrash } from '@/components/icons';
 import { ArtistAvatar } from '@/components/artist-avatar';
+import { ArtistSearch } from '@/components/artist-search';
 import { Flash } from '@/components/flash';
 import {
   acceptSuggestionAction,
@@ -159,6 +160,31 @@ export default async function ArtistsPage({
       </div>
 
       <h2 className="mt-10 text-[15px] font-semibold">Manage</h2>
+      {isAdmin || suggestions.length > 0 ? (
+        <section className="panel mt-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <IconSparkle className="text-[var(--accent)]" />
+                Suggested artists
+              </h2>
+              <p className="mt-1 max-w-prose text-xs text-[var(--muted)]">
+                Gemini suggests artists close to the ones you already follow and likely to play
+                India. Spotify&apos;s own recommendations API is not available to apps created
+                after November 2024, so this uses the same model as the rest of the pipeline.
+              </p>
+            </div>
+            {isAdmin ? (
+              <form action={suggestArtistsAction}>
+                <button
+                  type="submit"
+                  className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
+                >
+                  {suggestions.length > 0 ? 'Suggest more' : 'Suggest artists'}
+                </button>
+              </form>
+            ) : null}
+
       <AdminBar />
 
       {isAdmin ? (
@@ -208,51 +234,41 @@ export default async function ArtistsPage({
           <section className="panel p-5">
             <h2 className="text-sm font-semibold">Add artists</h2>
             <p className="mt-1 text-xs text-[var(--muted)]">
-              One name per line. Optional second CSV column for aliases, quoted if it contains
-              commas. The system works fully without Spotify.
+              Search Spotify&apos;s catalogue and add anyone, followed or not. Added artists are
+              scanned exactly like the rest.
             </p>
-            <form action={importArtistsAction} className="mt-3 space-y-2">
-              <textarea
-                name="artists"
-                rows={4}
-                placeholder={'Prateek Kuhad\nRitviz, "Ritviz Srivastava"'}
-                className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] px-3 py-2.5 font-mono text-xs placeholder:text-[var(--muted-dim)]"
-              />
-              <button
-                type="submit"
-                className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
-              >
-                Import
-              </button>
-            </form>
-          </section>
-        </div>
-      ) : null}
-
-      {isAdmin || suggestions.length > 0 ? (
-        <section className="panel mt-4 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <IconSparkle className="text-[var(--accent)]" />
-                Suggested artists
-              </h2>
-              <p className="mt-1 max-w-prose text-xs text-[var(--muted)]">
-                Gemini suggests artists close to the ones you already follow and likely to play
-                India. Spotify&apos;s own recommendations API is not available to apps created
-                after November 2024, so this uses the same model as the rest of the pipeline.
-              </p>
+            <div className="mt-3">
+              <ArtistSearch />
             </div>
-            {isAdmin ? (
-              <form action={suggestArtistsAction}>
+
+            <details className="mt-4 border-t border-[var(--line)] pt-3">
+              <summary className="cursor-pointer text-xs text-[var(--muted)] hover:text-white">
+                Paste or import a CSV instead
+              </summary>
+              <p className="mt-2 text-xs text-[var(--muted-dim)]">
+                One name per line. Optional second column for aliases, quoted if it contains
+                commas. Works with no Spotify connection at all.
+              </p>
+              <form action={importArtistsAction} className="mt-2 space-y-2">
+                <textarea
+                  name="artists"
+                  rows={4}
+                  placeholder={'Prateek Kuhad\nRitviz, "Ritviz Srivastava"'}
+                  className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg-deep)] px-3 py-2.5 font-mono text-xs placeholder:text-[var(--muted-dim)]"
+                />
                 <button
                   type="submit"
                   className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
                 >
-                  {suggestions.length > 0 ? 'Suggest more' : 'Suggest artists'}
+                  Import
                 </button>
               </form>
-            ) : null}
+            </details>
+          </section>
+        </div>
+      ) : null}
+
+
           </div>
 
           {suggestions.length > 0 ? (

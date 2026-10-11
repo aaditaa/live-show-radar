@@ -254,3 +254,34 @@ export async function fetchArtistImagesAction(): Promise<void> {
     }.`;
   });
 }
+
+export async function addArtistFromSearchAction(formData: FormData): Promise<void> {
+  const name = String(formData.get('name') ?? '').trim();
+  const spotifyId = String(formData.get('spotifyId') ?? '').trim() || null;
+  const imageUrl = String(formData.get('imageUrl') ?? '').trim() || null;
+
+  await runAdminAction('/artists', async () => {
+    if (!name) throw new Error('No artist given.');
+    const user = (await db.select().from(users).limit(1))[0];
+    if (!user) throw new Error('No user row exists yet. Run npm run db:seed.');
+
+    const inserted = await db
+      .insert(artists)
+      .values({
+        userId: user.id,
+        name,
+        aliases: [],
+        spotifyId,
+        imageUrl,
+        // Found through Spotify, but not followed there. `source` records how
+        // the artist joined the list, and a sync deactivates unfollowed
+        // 'spotify' rows — marking this one 'spotify' would delete it later.
+        source: 'manual' as const,
+      })
+      .onConflictDoNothing()
+      .returning({ name: artists.name });
+
+    if (inserted.length === 0) return `${name} is already on the list.`;
+    return `Added ${name}. It will be scanned on the next run.`;
+  });
+}

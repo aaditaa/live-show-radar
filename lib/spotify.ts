@@ -293,6 +293,52 @@ export async function getFollowedArtists(accessToken: string): Promise<SpotifyAr
   return collected;
 }
 
+export type ArtistSearchResult = {
+  spotifyId: string;
+  name: string;
+  imageUrl: string | null;
+  genres: string[];
+  followers: number | null;
+};
+
+/** Free-text artist search, for picking someone to watch. App-level auth. */
+export async function searchArtists(
+  query: string,
+  limit = 8,
+): Promise<ArtistSearchResult[]> {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) return [];
+
+  const token = await getAppToken();
+  const response = await fetchWithRetry(
+    `${API}/search?q=${encodeURIComponent(trimmed)}&type=artist&limit=${limit}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+    { timeoutMs: 10_000, label: `spotify search ${trimmed}` },
+  );
+
+  if (!response.ok) throw new Error(`Spotify search failed with HTTP ${response.status}`);
+
+  const body = (await response.json()) as {
+    artists?: {
+      items?: {
+        id: string;
+        name: string;
+        images?: { url: string }[];
+        genres?: string[];
+        followers?: { total?: number };
+      }[];
+    };
+  };
+
+  return (body.artists?.items ?? []).map((item) => ({
+    spotifyId: item.id,
+    name: item.name,
+    imageUrl: item.images?.[item.images.length - 1]?.url ?? null,
+    genres: item.genres ?? [],
+    followers: item.followers?.total ?? null,
+  }));
+}
+
 export function describeSpotifyError(error: unknown): string {
   return errorMessage(error);
 }
