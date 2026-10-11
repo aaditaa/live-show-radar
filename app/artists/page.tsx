@@ -5,6 +5,7 @@ import { hasAdminSession } from '@/lib/auth';
 import { isSpotifyConfigured } from '@/lib/spotify';
 import { formatIstDateTime, formatRelative } from '@/lib/time';
 import { AdminBar } from '@/components/admin-bar';
+import { Flash } from '@/components/flash';
 import { importArtistsAction, syncSpotifyAction, toggleStarAction } from '@/app/actions';
 
 export const dynamic = 'force-dynamic';
@@ -15,19 +16,10 @@ const SOURCE_LABEL: Record<string, string> = {
   demo: 'Demo',
 };
 
-const ERROR_COPY: Record<string, string> = {
-  admin_required: 'Sign in with the admin password before connecting Spotify.',
-  spotify_not_configured: 'SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET is not set on the server.',
-  state_mismatch: 'The Spotify callback did not match the request this app started. Try again.',
-  missing_code: 'Spotify did not return an authorization code.',
-  access_denied: 'You declined the Spotify permission request.',
-  no_user: 'No user row exists yet. Run npm run db:seed.',
-};
-
 export default async function ArtistsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string; error?: string }>;
+  searchParams: Promise<{ connected?: string; error?: string; done?: string }>;
 }) {
   const params = await searchParams;
   const [rows, user, isAdmin] = await Promise.all([
@@ -55,16 +47,10 @@ export default async function ArtistsPage({
         every 2 hours, the rest every 6.
       </p>
 
-      {params.connected ? (
-        <p className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2 text-sm text-emerald-300">
-          Spotify connected. Use “Sync Spotify” to pull your follow list.
-        </p>
-      ) : null}
-      {params.error ? (
-        <p className="mt-4 rounded-lg border border-rose-500/20 bg-rose-500/[0.06] px-3 py-2 text-sm text-rose-300">
-          {ERROR_COPY[params.error] ?? `Spotify error: ${params.error}`}
-        </p>
-      ) : null}
+      <Flash
+        done={params.connected ? 'Spotify connected. Use “Sync Spotify” to pull your follow list.' : params.done}
+        error={params.error}
+      />
 
       <AdminBar />
 

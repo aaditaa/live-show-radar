@@ -2,6 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import { alerts, artists, shows } from '@/db/schema';
 import { db } from '@/lib/db';
 import { formatIstDateTime, formatRelative } from '@/lib/time';
+import { Flash } from '@/components/flash';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,12 @@ const TYPE_LABEL: Record<string, string> = {
   show_updated: 'Show updated',
 };
 
-export default async function AlertsPage() {
+export default async function AlertsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ done?: string; error?: string }>;
+}) {
+  const params = await searchParams;
   const rows = await db
     .select({
       alert: alerts,
@@ -38,6 +44,7 @@ export default async function AlertsPage() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight text-white">Alerts</h1>
+      <Flash done={params.done} error={params.error} />
       <p className="mt-1 text-sm text-zinc-400">
         {rows.length} alerts · {sent} sent · {failed} failed. Each alert is written by Gemini and
         sent once — the <code className="text-zinc-300">alert_key</code> unique constraint makes a
