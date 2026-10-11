@@ -53,6 +53,19 @@ export function formatRelative(value: Date | string | null | undefined): string 
   return `${Math.round(hours / 24)} d ago`;
 }
 
+/** For a future instant: "in 2 h". For one already passed: "overdue". */
+export function formatEta(value: Date | string | null | undefined): string {
+  if (!value) return '\u2014';
+  const ms = new Date(value).getTime() - Date.now();
+  if (Number.isNaN(ms)) return '\u2014';
+  if (ms <= 0) return 'due now';
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `in ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `in ${hours} h`;
+  return `in ${Math.round(hours / 24)} d`;
+}
+
 export function formatCountdown(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   const ms = new Date(value).getTime() - Date.now();

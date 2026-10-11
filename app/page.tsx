@@ -9,7 +9,7 @@ import {
   splitByCity,
   type ShowWithArtist,
 } from '@/lib/queries';
-import { formatIstDateTime, formatRelative } from '@/lib/time';
+import { formatEta, formatIstDateTime, formatRelative } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,7 +93,7 @@ export default async function DashboardPage({
         />
         <Stat
           label="Next scan due"
-          value={nextCheckAt ? formatRelative(nextCheckAt).replace(' ago', ' overdue') : '—'}
+          value={formatEta(nextCheckAt)}
           hint={nextCheckAt ? formatIstDateTime(nextCheckAt) : 'no active artists'}
         />
         <Stat
