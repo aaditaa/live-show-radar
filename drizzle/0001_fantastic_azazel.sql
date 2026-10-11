@@ -1,0 +1,2 @@
+ALTER TABLE "ai_calls" DROP CONSTRAINT "ai_calls_task_check";--> statement-breakpoint
+ALTER TABLE "ai_calls" ADD CONSTRAINT "ai_calls_task_check" CHECK ("ai_calls"."task" in ('extract','reconcile','alert','suggest'));

@@ -65,3 +65,12 @@ describe('parseArtistInput', () => {
     expect(parseArtistInput('Lifafa\r\nRitviz')).toHaveLength(2);
   });
 });
+
+describe('seeded artists are stored as manual', () => {
+  it('the seed script no longer writes the demo source', async () => {
+    const { readFileSync } = await import('node:fs');
+    const seed = readFileSync(new URL('../scripts/seed.ts', import.meta.url), 'utf8');
+    expect(seed).toContain("source: 'manual' as const");
+    expect(seed).not.toContain("source: 'demo'");
+  });
+});

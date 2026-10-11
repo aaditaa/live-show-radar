@@ -23,7 +23,8 @@ async function main() {
 
   const rows = parseDemoArtists();
 
-  // Never clobber Spotify or manually added artists: insert demo rows, leave the rest alone.
+  // Seeded artists are stored as 'manual': they behave exactly like an artist
+  // typed into the import box, and a Spotify sync never touches them.
   const inserted = await db
     .insert(artists)
     .values(
@@ -31,7 +32,7 @@ async function main() {
         userId: user.id,
         name: row.name,
         aliases: row.aliases,
-        source: 'demo' as const,
+        source: 'manual' as const,
         isStarred: row.starred,
       })),
     )

@@ -8,6 +8,20 @@
       "when": 1791698893512,
       "tag": "0000_premium_meltdown",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791744385984,
+      "tag": "0001_fantastic_azazel",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791744492764,
+      "tag": "0002_slim_praxagora",
+      "breakpoints": true
     }
   ]
 }

@@ -201,8 +201,36 @@ export const aiCalls = pgTable(
     error: text('error'),
     createdAt: timestamp('created_at', tz).notNull().defaultNow(),
   },
-  (t) => [check('ai_calls_task_check', sql`${t.task} in ('extract','reconcile','alert')`)],
+  (t) => [
+    check('ai_calls_task_check', sql`${t.task} in ('extract','reconcile','alert','suggest')`),
+  ],
 );
+
+/**
+ * Artists Gemini suggested based on who the user already follows. Kept out of
+ * `artists` so a suggestion never reaches the scanner until it is accepted.
+ */
+export const artistSuggestions = pgTable(
+  'artist_suggestions',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    aliases: text('aliases').array().notNull().default(sql`'{}'::text[]`),
+    similarTo: text('similar_to'),
+    reason: text('reason'),
+    status: text('status').notNull().default('pending'),
+    createdAt: timestamp('created_at', tz).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('artist_suggestions_user_name').on(t.userId, sql`lower(${t.name})`),
+    check('artist_suggestions_status_check', sql`${t.status} in ('pending','added','dismissed')`),
+  ],
+);
+
+export type ArtistSuggestion = typeof artistSuggestions.$inferSelect;
 
 export type User = typeof users.$inferSelect;
 export type Artist = typeof artists.$inferSelect;

@@ -7,6 +7,7 @@ export type ShowWithArtist = {
   show: typeof shows.$inferSelect;
   artistName: string;
   artistStarred: boolean;
+  artistImageUrl: string | null;
 };
 
 export async function getUser() {
@@ -32,6 +33,7 @@ export async function getUpcomingShows(filters?: {
       show: shows,
       artistName: artists.name,
       artistStarred: artists.isStarred,
+      artistImageUrl: artists.imageUrl,
     })
     .from(shows)
     .innerJoin(artists, eq(shows.artistId, artists.id))

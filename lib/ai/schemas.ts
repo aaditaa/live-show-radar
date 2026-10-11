@@ -193,3 +193,38 @@ export const ALERT_RESPONSE_SCHEMA: Record<string, unknown> = {
   },
   required: ['priority', 'headline', 'message', 'action_by', 'reason'],
 };
+
+/* ---------- Suggestions: artists similar to the ones already followed ---------- */
+
+export const suggestResponseSchema = z.object({
+  suggestions: z.array(
+    z.object({
+      name: z.string(),
+      aliases: z.array(z.string()),
+      similar_to: z.string(),
+      reason: z.string(),
+    }),
+  ),
+});
+
+export type SuggestResponse = z.infer<typeof suggestResponseSchema>;
+
+export const SUGGEST_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  properties: {
+    suggestions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          aliases: { type: 'array', items: { type: 'string' } },
+          similar_to: { type: 'string', description: 'a followed artist this one resembles' },
+          reason: { type: 'string', description: 'one short sentence' },
+        },
+        required: ['name', 'aliases', 'similar_to', 'reason'],
+      },
+    },
+  },
+  required: ['suggestions'],
+};

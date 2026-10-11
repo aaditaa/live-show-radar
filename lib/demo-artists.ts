@@ -2,6 +2,9 @@
  * The seeded artist list — the only hard-coded data in the app. Shows are never
  * seeded; they always come from live sources.
  *
+ * These are inserted with source 'manual', the same as anything typed into the
+ * import box. The schema still permits 'demo' for backwards compatibility.
+ *
  * Format: name | aliases | starred
  */
 export const DEMO_ARTISTS_TABLE = `

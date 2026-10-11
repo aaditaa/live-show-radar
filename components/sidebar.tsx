@@ -6,12 +6,14 @@ import {
   IconArtists,
   IconBell,
   IconBook,
+  IconCalendar,
   IconDashboard,
   IconPulse,
 } from '@/components/icons';
 
 const LINKS = [
   { href: '/', label: 'Dashboard', Icon: IconDashboard },
+  { href: '/calendar', label: 'Calendar', Icon: IconCalendar },
   { href: '/artists', label: 'Artists', Icon: IconArtists },
   { href: '/alerts', label: 'Alerts', Icon: IconBell },
   { href: '/scans', label: 'Scans', Icon: IconPulse },

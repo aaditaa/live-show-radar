@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { GEMINI_MODEL, requireEnv } from '@/lib/env';
 import { errorMessage } from '@/lib/http';
 
-export type AiTask = 'extract' | 'reconcile' | 'alert';
+export type AiTask = 'extract' | 'reconcile' | 'alert' | 'suggest';
 
 let client: GoogleGenAI | undefined;
 

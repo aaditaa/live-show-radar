@@ -3,13 +3,14 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { eq, not } from 'drizzle-orm';
-import { artists, users } from '@/db/schema';
+import { and, count, eq, not } from 'drizzle-orm';
+import { artistSuggestions, artists, shows, users } from '@/db/schema';
 import { db } from '@/lib/db';
 import { ADMIN_COOKIE, adminSessionToken, checkAdminPassword, hasAdminSession } from '@/lib/auth';
 import { importArtists, syncSpotifyArtists } from '@/lib/artists';
 import { optionalEnv } from '@/lib/env';
 import { errorMessage } from '@/lib/http';
+import { suggestArtists } from '@/lib/ai/suggest';
 import { runScan } from '@/lib/pipeline/scan';
 import { isTelegramConfigured, sendTelegramMessage } from '@/lib/notify/telegram';
 
@@ -128,5 +129,108 @@ export async function sendTestAlertAction(): Promise<void> {
     );
     if (!sent.ok) throw new Error(`Telegram refused the message: ${sent.error}`);
     return 'Test alert sent to Telegram.';
+  });
+}
+
+export async function removeArtistAction(formData: FormData): Promise<void> {
+  const artistId = String(formData.get('artistId') ?? '');
+  await runAdminAction('/artists', async () => {
+    if (!artistId) throw new Error('No artist given.');
+
+    // Say plainly what else goes with them: shows cascade on delete.
+    const [{ value: showCount } = { value: 0 }] = await db
+      .select({ value: count() })
+      .from(shows)
+      .where(eq(shows.artistId, artistId));
+
+    const [removed] = await db
+      .delete(artists)
+      .where(eq(artists.id, artistId))
+      .returning({ name: artists.name });
+
+    if (!removed) throw new Error('That artist no longer exists.');
+    return `Removed ${removed.name}${showCount > 0 ? ` and ${showCount} of their shows` : ''}.`;
+  });
+}
+
+export async function suggestArtistsAction(): Promise<void> {
+  await runAdminAction('/artists', async () => {
+    const user = (await db.select().from(users).limit(1))[0];
+    if (!user) throw new Error('No user row exists yet. Run npm run db:seed.');
+
+    const followed = await db
+      .select({ name: artists.name, isStarred: artists.isStarred })
+      .from(artists)
+      .where(eq(artists.isActive, true));
+
+    const { suggestions, error } = await suggestArtists(followed, user.homeCity);
+    if (error) throw new Error(`Gemini could not suggest artists: ${error}`);
+    if (suggestions.length === 0) throw new Error('Gemini returned no suggestions.');
+
+    // Anything already followed or already suggested is dropped by the unique
+    // index; only genuinely new names land.
+    const followedKeys = new Set(followed.map((a) => a.name.toLowerCase()));
+    const fresh = suggestions.filter((s) => !followedKeys.has(s.name.toLowerCase()));
+
+    const inserted = await db
+      .insert(artistSuggestions)
+      .values(
+        fresh.map((s) => ({
+          userId: user.id,
+          name: s.name,
+          aliases: s.aliases,
+          similarTo: s.similar_to,
+          reason: s.reason,
+        })),
+      )
+      .onConflictDoNothing()
+      .returning({ id: artistSuggestions.id });
+
+    return `Gemini suggested ${suggestions.length} artists; ${inserted.length} are new.`;
+  });
+}
+
+export async function acceptSuggestionAction(formData: FormData): Promise<void> {
+  const id = String(formData.get('suggestionId') ?? '');
+  await runAdminAction('/artists', async () => {
+    const user = (await db.select().from(users).limit(1))[0];
+    if (!user) throw new Error('No user row exists yet.');
+
+    const [suggestion] = await db
+      .select()
+      .from(artistSuggestions)
+      .where(and(eq(artistSuggestions.id, id), eq(artistSuggestions.userId, user.id)))
+      .limit(1);
+    if (!suggestion) throw new Error('That suggestion no longer exists.');
+
+    await db
+      .insert(artists)
+      .values({
+        userId: user.id,
+        name: suggestion.name,
+        aliases: suggestion.aliases,
+        source: 'manual' as const,
+      })
+      .onConflictDoNothing();
+
+    await db
+      .update(artistSuggestions)
+      .set({ status: 'added' })
+      .where(eq(artistSuggestions.id, id));
+
+    return `Added ${suggestion.name}. It will be scanned on the next run.`;
+  });
+}
+
+export async function dismissSuggestionAction(formData: FormData): Promise<void> {
+  const id = String(formData.get('suggestionId') ?? '');
+  await runAdminAction('/artists', async () => {
+    const [dismissed] = await db
+      .update(artistSuggestions)
+      .set({ status: 'dismissed' })
+      .where(eq(artistSuggestions.id, id))
+      .returning({ name: artistSuggestions.name });
+    if (!dismissed) throw new Error('That suggestion no longer exists.');
+    return `Dismissed ${dismissed.name}.`;
   });
 }

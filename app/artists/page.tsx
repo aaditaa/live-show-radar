@@ -1,14 +1,23 @@
-import { asc, desc } from 'drizzle-orm';
-import { artists, users } from '@/db/schema';
+import { and, asc, desc, eq } from 'drizzle-orm';
+import { artistSuggestions, artists, users } from '@/db/schema';
 import { db } from '@/lib/db';
 import { hasAdminSession } from '@/lib/auth';
 import { isSpotifyConfigured } from '@/lib/spotify';
 import { formatIstDateTime, formatRelative } from '@/lib/time';
 import { AdminBar } from '@/components/admin-bar';
 import { PageHeader } from '@/components/page-header';
-import { IconStar } from '@/components/icons';
+import { IconSparkle, IconStar, IconTrash } from '@/components/icons';
+import { ArtistAvatar } from '@/components/artist-avatar';
 import { Flash } from '@/components/flash';
-import { importArtistsAction, syncSpotifyAction, toggleStarAction } from '@/app/actions';
+import {
+  acceptSuggestionAction,
+  dismissSuggestionAction,
+  importArtistsAction,
+  removeArtistAction,
+  suggestArtistsAction,
+  syncSpotifyAction,
+  toggleStarAction,
+} from '@/app/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,12 +39,25 @@ export default async function ArtistsPage({
     hasAdminSession(),
   ]);
 
+  const suggestions = await db
+    .select()
+    .from(artistSuggestions)
+    .where(
+      user[0]
+        ? and(
+            eq(artistSuggestions.userId, user[0].id),
+            eq(artistSuggestions.status, 'pending'),
+          )
+        : eq(artistSuggestions.status, 'pending'),
+    )
+    .orderBy(asc(artistSuggestions.createdAt))
+    .limit(12);
+
   const currentUser = user[0];
   const spotifyConnected = Boolean(currentUser?.spotifyRefreshToken);
   const counts = {
     spotify: rows.filter((r) => r.source === 'spotify').length,
     manual: rows.filter((r) => r.source === 'manual').length,
-    demo: rows.filter((r) => r.source === 'demo').length,
     inactive: rows.filter((r) => !r.isActive).length,
   };
 
@@ -43,7 +65,7 @@ export default async function ArtistsPage({
     <>
       <PageHeader
         title="Artists"
-        subtitle={`${rows.length} watched · ${counts.spotify} from Spotify · ${counts.manual} manual · ${counts.demo} demo${
+        subtitle={`${rows.length} watched · ${counts.spotify} from Spotify · ${counts.manual} added manually${
           counts.inactive > 0 ? ` · ${counts.inactive} inactive` : ''
         }. Starred artists are checked every 2 hours, the rest every 6.`}
       />
@@ -113,6 +135,84 @@ export default async function ArtistsPage({
         </div>
       ) : null}
 
+      {isAdmin || suggestions.length > 0 ? (
+        <section className="panel mt-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <IconSparkle className="text-[var(--accent)]" />
+                Suggested artists
+              </h2>
+              <p className="mt-1 max-w-prose text-xs text-[var(--muted)]">
+                Gemini suggests artists close to the ones you already follow and likely to play
+                India. Spotify&apos;s own recommendations API is not available to apps created
+                after November 2024, so this uses the same model as the rest of the pipeline.
+              </p>
+            </div>
+            {isAdmin ? (
+              <form action={suggestArtistsAction}>
+                <button
+                  type="submit"
+                  className="rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] px-4 py-2 text-sm transition hover:border-white/25"
+                >
+                  {suggestions.length > 0 ? 'Suggest more' : 'Suggest artists'}
+                </button>
+              </form>
+            ) : null}
+          </div>
+
+          {suggestions.length > 0 ? (
+            <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+              {suggestions.map((suggestion) => (
+                <li
+                  key={suggestion.id}
+                  className="flex items-start gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-raised)] p-3"
+                >
+                  <ArtistAvatar name={suggestion.name} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{suggestion.name}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
+                      {suggestion.reason}
+                    </p>
+                    {suggestion.similarTo ? (
+                      <p className="mt-1 text-[11px] text-[var(--muted-dim)]">
+                        like {suggestion.similarTo}
+                      </p>
+                    ) : null}
+                  </div>
+                  {isAdmin ? (
+                    <div className="flex shrink-0 flex-col gap-1.5">
+                      <form action={acceptSuggestionAction}>
+                        <input type="hidden" name="suggestionId" value={suggestion.id} />
+                        <button
+                          type="submit"
+                          className="w-full rounded-lg bg-[var(--accent)] px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-[var(--accent-hover)]"
+                        >
+                          Add
+                        </button>
+                      </form>
+                      <form action={dismissSuggestionAction}>
+                        <input type="hidden" name="suggestionId" value={suggestion.id} />
+                        <button
+                          type="submit"
+                          className="w-full rounded-lg border border-[var(--line)] px-2.5 py-1 text-[11px] text-[var(--muted)] transition hover:text-white"
+                        >
+                          No
+                        </button>
+                      </form>
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-xs text-[var(--muted-dim)]">
+              No suggestions yet.
+            </p>
+          )}
+        </section>
+      ) : null}
+
       <div className="panel mt-6 overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-[var(--line)] text-[11px] uppercase tracking-[0.08em] text-[var(--muted-dim)]">
@@ -123,6 +223,7 @@ export default async function ArtistsPage({
               <th className="px-4 py-3 font-medium">Source</th>
               <th className="px-4 py-3 font-medium">Last check</th>
               <th className="px-4 py-3 font-medium">Next check</th>
+              {isAdmin ? <th className="px-4 py-3 font-medium">Remove</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--line)]">
@@ -150,10 +251,15 @@ export default async function ArtistsPage({
                   </td>
                 ) : null}
                 <td className="px-4 py-3 font-medium text-white">
-                  {!isAdmin && artist.isStarred ? (
-                    <IconStar filled className="mr-1 inline h-3.5 w-3.5 text-amber-300" />
-                  ) : null}
-                  {artist.name}
+                  <span className="flex items-center gap-2.5">
+                    <ArtistAvatar name={artist.name} imageUrl={artist.imageUrl} size="sm" />
+                    <span className="truncate">
+                      {!isAdmin && artist.isStarred ? (
+                        <IconStar filled className="mr-1 inline h-3.5 w-3.5 text-amber-300" />
+                      ) : null}
+                      {artist.name}
+                    </span>
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-[var(--muted-dim)]">
                   {artist.aliases.length > 0 ? artist.aliases.join(', ') : '—'}
@@ -169,6 +275,20 @@ export default async function ArtistsPage({
                 <td className="px-4 py-3 text-[var(--muted-dim)]">
                   {formatIstDateTime(artist.nextCheckAt)}
                 </td>
+                {isAdmin ? (
+                  <td className="px-4 py-3">
+                    <form action={removeArtistAction}>
+                      <input type="hidden" name="artistId" value={artist.id} />
+                      <button
+                        type="submit"
+                        title={`Remove ${artist.name} and any shows found for them`}
+                        className="text-[var(--muted-dim)] transition hover:text-rose-300"
+                      >
+                        <IconTrash className="h-4 w-4" />
+                      </button>
+                    </form>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

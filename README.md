@@ -82,11 +82,14 @@ scan's `errors` column and never fails the run.
 | 10 | Notifier | Telegram Bot API | `lib/notify/telegram.ts` |
 | 11 | Database | Postgres on Neon, Drizzle | `db/schema.ts` |
 | 12 | Dashboard and logs | Next.js pages | `app/page.tsx`, `app/scans`, `app/how-it-works` |
+| 13 | Calendar | Month grid of upcoming shows | `app/calendar/page.tsx` |
+| 14 | Artist suggestions | Gemini, similar-artist discovery | `lib/ai/suggest.ts` |
 
 ## Data sources
 
 All data is fetched live. **No show is ever hard-coded or mocked.** The only seeded data is the
-list of 20 demo artists in `lib/demo-artists.ts`.
+list of 20 artists in `lib/demo-artists.ts`, which seed as `manual` — identical to anything
+typed into the import box.
 
 | Source | Key | What it covers |
 | --- | --- | --- |
@@ -111,6 +114,7 @@ latency and token counts. Generation settings are left at the model's defaults.
 | **1 Extract** | Artist names with aliases + unprocessed search items | Show candidates matching the Appendix B schema | `lib/ai/extract.ts` |
 | **2 Reconcile** | A stored show + a candidate sharing its `dedup_key` | `same_show`, changed fields, the single material change | `lib/ai/reconcile.ts` |
 | **3 Alert** | The show, home city, and the priority already decided | headline, Telegram HTML message, `action_by`, reason | `lib/ai/alert.ts` |
+| **Suggest** | Every followed artist, starred ones weighted first | Similar artists likely to play India, each with the artist it resembles | `lib/ai/suggest.ts` |
 
 **Priority is decided in code, never by the model** (`lib/pipeline/priority.ts`). Gemini only
 explains it.
@@ -142,6 +146,9 @@ Use `127.0.0.1`, not `localhost` — Spotify no longer accepts `localhost` as a 
 | `npm run db:due` | Mark every artist due, to re-run a scan without waiting |
 | `npm run db:studio` | Drizzle Studio |
 | `npm run telegram:chat-id` | Print your Telegram chat ID after sending `/start` |
+
+Pages: `/` dashboard, `/calendar` month grid, `/artists` (import, star, remove, suggestions),
+`/alerts`, `/scans`, `/how-it-works`.
 
 Trigger a scan locally:
 
@@ -198,6 +205,14 @@ values. Nothing in this repo logs or prints a secret, and Spotify tokens never l
   designed to run fully without Spotify.
 - **Spotify no longer exposes `followers` or `popularity`**, and the batch `GET /artists` endpoint
   is gone, so artists sync with name and image only.
+- **Spotify's Recommendations and Related Artists endpoints are unavailable** to apps created
+  after November 2024, and to development-mode apps generally. Artist suggestions therefore come
+  from Gemini rather than Spotify, which also keeps every AI path on a single provider.
+- **Artist images come from Spotify**, so artists added manually show a generated monogram until
+  a Spotify sync finds a matching image. The monogram colour is derived from the name, so it is
+  stable rather than random.
+- **The calendar places only day-precision shows on the grid.** A month-precision or undated show
+  is listed separately rather than pinned to a date nobody announced.
 - **Tavily's free tier is 1,000 credits a month.** The current cadence costs roughly 790. Starring
   more than 10 artists would exceed it; the caps are named constants in `lib/sources/tavily.ts`.
 - **A scan processes at most 15 artists and 400 unprocessed items**, so a large follow list is

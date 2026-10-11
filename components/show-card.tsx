@@ -1,4 +1,5 @@
 import type { ShowWithArtist } from '@/lib/queries';
+import { ArtistAvatar } from '@/components/artist-avatar';
 import { IconClock, IconPin, IconStar, IconTicket } from '@/components/icons';
 import { formatCountdown, formatEventDate, formatRelative } from '@/lib/time';
 
@@ -34,82 +35,88 @@ function earlyBird(show: ShowWithArtist['show']) {
 }
 
 export function ShowCard({ row }: { row: ShowWithArtist }) {
-  const { show, artistName, artistStarred } = row;
+  const { show, artistName, artistStarred, artistImageUrl } = row;
   const gradient = GRADIENT[show.priority] ?? GRADIENT.P3;
   const live = show.earlyBirdStatus === 'open' || show.earlyBirdStatus === 'imminent';
 
   return (
     <article
-      className={`relative flex min-h-[224px] w-[290px] shrink-0 flex-col overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-5 text-white shadow-lg shadow-black/30`}
+      className={`relative flex min-h-[320px] w-[368px] max-w-[88vw] shrink-0 flex-col overflow-hidden rounded-[20px] bg-gradient-to-br ${gradient} p-6 text-white shadow-xl shadow-black/35`}
     >
-      {/* Soft facet, echoing the embossed shapes on the reference cards. */}
+      {/* Soft facets, echoing the embossed shapes on the reference cards. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/10 blur-xl"
+        className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl"
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute -bottom-20 -left-8 h-40 w-40 rounded-full bg-black/15 blur-xl"
+        className="pointer-events-none absolute -bottom-24 -left-10 h-48 w-48 rounded-full bg-black/20 blur-2xl"
       />
 
-      <header className="relative flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 truncate text-base font-semibold leading-tight">
-            {artistStarred ? <IconStar filled className="h-3.5 w-3.5 text-white/90" /> : null}
+      <header className="relative flex items-start gap-3.5">
+        <ArtistAvatar
+          name={artistName}
+          imageUrl={artistImageUrl}
+          size="lg"
+          className="ring-2 ring-white/25"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 text-lg font-semibold leading-tight">
+            {artistStarred ? <IconStar filled className="h-4 w-4 shrink-0 text-white/90" /> : null}
             <span className="truncate">{artistName}</span>
           </p>
-          <p className="mt-0.5 truncate text-xs text-white/70">
+          <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-white/70">
             {show.isFestival && show.festivalName
               ? show.festivalName
               : (show.eventName ?? 'Live show')}
           </p>
         </div>
-        <span className="shrink-0 rounded-full bg-black/25 px-2 py-0.5 text-[11px] font-semibold tracking-wide">
+        <span className="shrink-0 rounded-full bg-black/25 px-2.5 py-1 text-[11px] font-semibold tracking-wide">
           {show.priority}
         </span>
       </header>
 
-      <div className="relative mt-5 space-y-1.5 text-sm">
-        <p className="flex items-center gap-2 text-white/90">
-          <IconClock className="h-4 w-4 text-white/60" />
+      <div className="relative mt-6 space-y-2.5 text-[15px]">
+        <p className="flex items-center gap-2.5 text-white/95">
+          <IconClock className="h-[18px] w-[18px] shrink-0 text-white/60" />
           {formatEventDate(show.eventDate, show.datePrecision as 'day' | 'month')}
         </p>
-        <p className="flex items-center gap-2 text-white/90">
-          <IconPin className="h-4 w-4 text-white/60" />
-          <span className="truncate">
-            {show.city}
-            {show.venue ? ` · ${show.venue}` : ' · venue TBA'}
+        <p className="flex items-start gap-2.5 text-white/95">
+          <IconPin className="mt-0.5 h-[18px] w-[18px] shrink-0 text-white/60" />
+          <span className="min-w-0">
+            <span className="font-medium">{show.city}</span>
+            <span className="block text-[13px] text-white/65">{show.venue ?? 'Venue TBA'}</span>
           </span>
         </p>
       </div>
 
       <div className="relative mt-4">
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
             live ? 'bg-white text-black' : 'bg-black/25 text-white/80'
           }`}
         >
-          <IconTicket className="h-3.5 w-3.5" />
+          <IconTicket className="h-4 w-4" />
           {earlyBird(show)}
         </span>
         {show.earlyBirdNote ? (
-          <p className="mt-1.5 text-[11px] text-white/60">{show.earlyBirdNote}</p>
+          <p className="mt-2 text-xs text-white/65">{show.earlyBirdNote}</p>
         ) : null}
       </div>
 
-      <footer className="relative mt-auto flex items-center justify-between gap-2 pt-4 text-xs">
-        <div className="flex items-center gap-2">
+      <footer className="relative mt-auto flex items-end justify-between gap-3 pt-5">
+        <div className="flex items-center gap-3">
           {show.ticketUrl ? (
             <a
               href={show.ticketUrl}
               target="_blank"
               rel="noreferrer noopener"
-              className="rounded-lg bg-white/95 px-2.5 py-1.5 text-xs font-semibold text-black transition hover:bg-white"
+              className="rounded-xl bg-white/95 px-3.5 py-2 text-[13px] font-semibold text-black transition hover:bg-white"
             >
               Tickets{show.ticketPlatform ? ` · ${show.ticketPlatform}` : ''}
             </a>
           ) : (
-            <span className="rounded-lg bg-black/20 px-2.5 py-1.5 text-xs text-white/60">
+            <span className="rounded-xl bg-black/20 px-3.5 py-2 text-[13px] text-white/60">
               Ticket link TBA
             </span>
           )}
@@ -118,14 +125,15 @@ export function ShowCard({ row }: { row: ShowWithArtist }) {
               href={show.sourceUrls[0]}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-white/70 underline decoration-white/30 underline-offset-2 hover:text-white"
+              className="text-[13px] text-white/70 underline decoration-white/30 underline-offset-2 hover:text-white"
             >
               Source
             </a>
           ) : null}
         </div>
-        <span className="shrink-0 text-[11px] text-white/55" title={`First seen ${formatRelative(show.firstSeenAt)}`}>
+        <span className="shrink-0 text-right text-[11px] leading-tight text-white/55">
           {PRIORITY_NOTE[show.priority]}
+          <span className="block text-white/40">seen {formatRelative(show.firstSeenAt)}</span>
         </span>
       </footer>
     </article>

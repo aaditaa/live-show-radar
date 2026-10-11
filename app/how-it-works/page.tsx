@@ -52,6 +52,13 @@ const AI_TASKS = [
     file: 'lib/ai/reconcile.ts',
   },
   {
+    task: 'suggest',
+    title: 'Suggest — artists worth following',
+    input: 'Every artist currently followed, starred ones weighted first.',
+    output: 'Similar artists likely to play India, each with the artist it resembles.',
+    file: 'lib/ai/suggest.ts',
+  },
+  {
     task: 'alert',
     title: 'Task 3 — Prioritise and write the alert',
     input: 'The show, the home city, and the priority already decided by the rules.',
