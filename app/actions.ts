@@ -47,9 +47,12 @@ async function runAdminAction(
 
 export async function loginAction(formData: FormData): Promise<void> {
   const password = String(formData.get('password') ?? '');
+  const requested = String(formData.get('next') ?? '/artists');
+  // Only ever bounce back to a path inside this app.
+  const next = requested.startsWith('/') ? requested : '/artists';
 
   if (!checkAdminPassword(password)) {
-    redirect('/artists?error=bad_password');
+    redirect(`/admin?error=bad_password&next=${encodeURIComponent(next)}`);
   }
 
   const store = await cookies();
@@ -61,14 +64,14 @@ export async function loginAction(formData: FormData): Promise<void> {
     maxAge: 60 * 60 * 12,
   });
   revalidatePath('/', 'layout');
-  redirect('/artists?done=Signed%20in');
+  redirect(`${next}?done=Signed%20in`);
 }
 
 export async function logoutAction(): Promise<void> {
   const store = await cookies();
   store.delete(ADMIN_COOKIE);
   revalidatePath('/', 'layout');
-  redirect('/artists');
+  redirect('/admin?done=Signed%20out');
 }
 
 export async function importArtistsAction(formData: FormData): Promise<void> {

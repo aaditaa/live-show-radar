@@ -8,6 +8,7 @@ import {
   IconBook,
   IconCalendar,
   IconDashboard,
+  IconLock,
   IconPulse,
 } from '@/components/icons';
 
@@ -60,9 +61,23 @@ export function Sidebar({ homeCity, artistCount }: { homeCity: string; artistCou
         })}
       </nav>
 
-      <p className="mt-auto hidden px-1 text-[11px] leading-relaxed text-[var(--muted-dim)] lg:block">
-        Times in Asia/Kolkata. Every show here was found live by the scanner — nothing is seeded.
-      </p>
+      <div className="mt-auto hidden lg:block">
+        <Link
+          href="/admin"
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+            pathname.startsWith('/admin')
+              ? 'bg-[var(--panel-raised)] font-medium text-white shadow-[inset_0_0_0_1px_var(--line)]'
+              : 'text-[var(--muted)] hover:bg-white/[0.04] hover:text-white'
+          }`}
+        >
+          <IconLock className={pathname.startsWith('/admin') ? 'text-[var(--accent)]' : ''} />
+          Admin
+        </Link>
+        <p className="mt-3 px-1 text-[11px] leading-relaxed text-[var(--muted-dim)]">
+          Times in Asia/Kolkata. Every show here was found live by the scanner — nothing is
+          seeded.
+        </p>
+      </div>
     </aside>
   );
 }

@@ -147,8 +147,9 @@ Use `127.0.0.1`, not `localhost` — Spotify no longer accepts `localhost` as a 
 | `npm run db:studio` | Drizzle Studio |
 | `npm run telegram:chat-id` | Print your Telegram chat ID after sending `/start` |
 
-Pages: `/` dashboard, `/calendar` month grid, `/artists` (import, star, remove, suggestions),
-`/alerts`, `/scans`, `/how-it-works`.
+Pages: `/` dashboard, `/calendar` month grid, `/artists` (search, star, remove, suggestions),
+`/alerts`, `/scans`, `/how-it-works`, and `/admin` for the password sign-in. Everything except
+`/admin` is public and read-only.
 
 Trigger a scan locally:
 
