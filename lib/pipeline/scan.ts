@@ -18,6 +18,9 @@ import {
   type BatchArtist,
 } from '@/lib/pipeline/batch';
 import { filterNewItems, insertSourceItems } from '@/lib/pipeline/filter';
+import { loadUnprocessedItems, runExtractStage } from '@/lib/pipeline/extract-stage';
+import type { RejectionReason } from '@/lib/pipeline/match';
+import { artists as artistsTable } from '@/db/schema';
 
 export const FETCH_CONCURRENCY = 5;
 export const FETCH_TIMEOUT_MS = 10_000;
@@ -37,6 +40,7 @@ export type ScanSummary = {
   itemsFetched: number;
   itemsNew: number;
   geminiCalls: number;
+  rejectedCandidates: Record<RejectionReason, number>;
   showsNew: number;
   showsUpdated: number;
   alertsSent: number;
@@ -103,6 +107,16 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
   let priorityArtists: BatchArtist[] = [];
   let itemsFetched = 0;
   let itemsNew = 0;
+  let geminiCalls = 0;
+  let showsNew = 0;
+  let rejectedCandidates: Record<RejectionReason, number> = {
+    not_a_show_announcement: 0,
+    not_india: 0,
+    low_confidence: 0,
+    past_event: 0,
+    no_city: 0,
+    unknown_artist: 0,
+  };
 
   try {
     batch = await pickArtistBatch(undefined, now);
@@ -134,6 +148,22 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
     itemsFetched = fetched.length;
     itemsNew = await insertSourceItems(fresh, run.id);
 
+    // Extract from everything still unprocessed, not only this run's fetch, so
+    // a backlog from an interrupted scan is always picked up.
+    const pending = await loadUnprocessedItems(batch);
+    if (pending.length > 0) {
+      // Sweep items are matched against every artist, not just this batch.
+      const allArtists = await db.select().from(artistsTable);
+      const extract = await runExtractStage(batch, allArtists, pending, {
+        scanRunId: run.id,
+        now,
+      });
+      geminiCalls = extract.geminiCalls;
+      showsNew = extract.newShows.length;
+      rejectedCandidates = extract.rejections;
+      errors.push(...extract.errors);
+    }
+
     await markArtistsChecked(batch, now);
   } catch (error) {
     errors.push({ source: 'google_news', query: 'scan', message: errorMessage(error) });
@@ -149,6 +179,8 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
       sweepRan,
       itemsFetched,
       itemsNew,
+      geminiCalls,
+      showsNew,
       errors,
     })
     .where(eq(scanRuns.id, run.id));
@@ -165,9 +197,10 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
     priorityArtistChecks: priorityArtists.length,
     itemsFetched,
     itemsNew,
-    // Wired up in M3 and M4.
-    geminiCalls: 0,
-    showsNew: 0,
+    geminiCalls,
+    showsNew,
+    rejectedCandidates,
+    // Task 2 reconcile and Task 3 alerts arrive in M4.
     showsUpdated: 0,
     alertsSent: 0,
     errors,
