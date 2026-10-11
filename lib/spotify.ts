@@ -183,11 +183,17 @@ export async function getFollowedArtists(accessToken: string): Promise<SpotifyAr
     );
 
     if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(
+      // Report what Spotify said. A 403 has several causes — the app owner
+      // lacking Premium, the account not being on the Development Mode
+      // allowlist, or a missing scope — and guessing between them sends
+      // people to fix the wrong thing.
+      const detail = (await response.text()).trim();
+      const hint =
         response.status === 403
-          ? 'Spotify returned 403. In Development Mode each user must be added to the app allowlist in the dashboard under User Management.'
-          : `Spotify following failed: HTTP ${response.status} ${detail.slice(0, 120)}`,
+          ? ' A 403 here usually means the app owner has no active Spotify Premium subscription, or this account is not on the app allowlist (Dashboard, User Management).'
+          : '';
+      throw new Error(
+        `Spotify /me/following failed with HTTP ${response.status}. ${detail.slice(0, 220)}${hint}`,
       );
     }
 
