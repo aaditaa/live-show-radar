@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Live Show Radar
 
-## Getting Started
+An AI-powered live-show alert system for one user, Karan (home city Bengaluru). It monitors
+concert and festival announcements in India for every artist he follows and alerts him the
+moment a show is announced, with special attention to early-bird ticket windows.
 
-First, run the development server:
+> **Status: M1 complete.** Scaffold, database schema, migrations, seed and a dashboard that
+> reads from the database. The full README (architecture, components map, data sources, AI
+> tasks, deploy steps, known limitations) lands in M7.
+
+## Stack
+
+- Next.js 16 (App Router) + TypeScript + Tailwind 4
+- Postgres on Neon (`@neondatabase/serverless`) + Drizzle ORM with SQL migrations
+- Google Gemini Flash via `@google/genai` for all AI tasks — no other LLM anywhere in the app
+- zod for validating every Gemini response, `fast-xml-parser` for RSS
+- Telegram Bot API for alerts; Vitest for unit tests
+
+## Local setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # then fill in DATABASE_URL and your keys
+npm run db:migrate           # apply SQL migrations
+npm run db:seed              # create Karan + the 20 demo artists
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm test` | Unit tests (Vitest) |
+| `npm run db:generate` | Generate a SQL migration from `db/schema.ts` |
+| `npm run db:migrate` | Apply pending migrations |
+| `npm run db:seed` | Seed Karan and the 20 demo artists (idempotent) |
+| `npm run db:studio` | Drizzle Studio |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Data
 
-## Learn More
+The only seeded data is the artist list. **No shows are ever hard-coded or mocked** — every
+show on the dashboard comes from a live fetch against Google News RSS and the Tavily Search
+API, extracted by Gemini.
 
-To learn more about Next.js, take a look at the following resources:
+All timestamps are stored in UTC and rendered in Asia/Kolkata.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Secrets
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Real values live in `.env.local`, which is git-ignored. `.env.example` lists every variable
+name with no values. Nothing in this repo logs or prints a secret.

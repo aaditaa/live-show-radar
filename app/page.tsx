@@ -1,69 +1,164 @@
-import Image from "next/image";
+import { ShowCard } from '@/components/show-card';
+import { HOME_CITY } from '@/lib/cities';
+import {
+  getArtistStats,
+  getDistinctCities,
+  getLastScan,
+  getNextCheckAt,
+  getUpcomingShows,
+  splitByCity,
+  type ShowWithArtist,
+} from '@/lib/queries';
+import { formatIstDateTime, formatRelative } from '@/lib/time';
 
-export default function Home() {
+export const dynamic = 'force-dynamic';
+
+const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
+
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+      <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-white">{value}</p>
+      {hint ? <p className="text-xs text-zinc-500">{hint}</p> : null}
     </div>
+  );
+}
+
+function Section({
+  title, subtitle, rows, emptyNote,
+}: {
+  title: string;
+  subtitle: string;
+  rows: ShowWithArtist[];
+  emptyNote: string;
+}) {
+  return (
+    <section className="mt-10">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <span className="text-xs text-zinc-500">{subtitle}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="mt-3 rounded-xl border border-dashed border-white/10 px-4 py-6 text-sm text-zinc-500">
+          {emptyNote}
+        </p>
+      ) : (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {rows.map((row) => (
+            <ShowCard key={row.show.id} row={row} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ city?: string; priority?: string }>;
+}) {
+  const params = await searchParams;
+  const city = params.city && params.city !== 'all' ? params.city : undefined;
+  const priority = params.priority && params.priority !== 'all' ? params.priority : undefined;
+
+  const [rows, lastScan, nextCheckAt, stats, cities] = await Promise.all([
+    getUpcomingShows({ city, priority }),
+    getLastScan(),
+    getNextCheckAt(),
+    getArtistStats(),
+    getDistinctCities(),
+  ]);
+
+  const { home, elsewhere } = splitByCity(rows);
+
+  return (
+    <>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-white">
+          Live shows on the radar
+        </h1>
+        <p className="mt-1 text-sm text-zinc-400">
+          Concert and festival announcements in India for every artist Karan follows, with
+          early-bird ticket windows called out first.
+        </p>
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          label="Last scan"
+          value={lastScan ? formatRelative(lastScan.startedAt) : 'no scans yet'}
+          hint={lastScan ? formatIstDateTime(lastScan.startedAt) : 'run one from /scans'}
+        />
+        <Stat
+          label="Next scan due"
+          value={nextCheckAt ? formatRelative(nextCheckAt).replace(' ago', ' overdue') : '—'}
+          hint={nextCheckAt ? formatIstDateTime(nextCheckAt) : 'no active artists'}
+        />
+        <Stat
+          label="Artists watched"
+          value={`${stats.active} active`}
+          hint={`${stats.starred} starred · ${stats.total} total`}
+        />
+        <Stat
+          label="Upcoming shows"
+          value={`${rows.length} found`}
+          hint={`${home.length} in ${HOME_CITY}`}
+        />
+      </div>
+
+      <form className="mt-6 flex flex-wrap items-end gap-3 text-sm" action="/">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs uppercase tracking-wide text-zinc-500">City</span>
+          <select
+            name="city"
+            defaultValue={city ?? 'all'}
+            className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-zinc-200"
+          >
+            <option value="all">All cities</option>
+            {cities.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs uppercase tracking-wide text-zinc-500">Priority</span>
+          <select
+            name="priority"
+            defaultValue={priority ?? 'all'}
+            className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-zinc-200"
+          >
+            <option value="all">All priorities</option>
+            {PRIORITIES.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="submit"
+          className="rounded-lg border border-white/10 px-3 py-1.5 text-zinc-200 hover:border-white/30"
+        >
+          Apply
+        </button>
+      </form>
+
+      <Section
+        title={HOME_CITY}
+        subtitle="home city — checked first"
+        rows={home}
+        emptyNote={`No ${HOME_CITY} shows on the radar yet. The scanner only reports announcements it can find published online.`}
+      />
+      <Section
+        title="Elsewhere in India"
+        subtitle="other Indian cities"
+        rows={elsewhere}
+        emptyNote="Nothing elsewhere in India yet."
+      />
+    </>
   );
 }
