@@ -13,7 +13,15 @@ async function main() {
 
   const me = await (await fetch(`https://api.telegram.org/bot${token}/getMe`)).json();
   if (!me.ok) throw new Error(`getMe failed: ${me.description}`);
-  console.log(`Bot: @${me.result.username}\n`);
+  console.log(`Bot: @${me.result.username}`);
+
+  const configured = process.env.TELEGRAM_CHAT_ID;
+  if (configured) {
+    console.log(`TELEGRAM_CHAT_ID is already set to ${configured}.`);
+    console.log('Alerts will go there. Run this only if you need to change it.\n');
+  } else {
+    console.log('');
+  }
 
   const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
   const body = await res.json();
@@ -29,9 +37,15 @@ async function main() {
   }
 
   if (chats.size === 0) {
-    console.log('No chats found yet.');
-    console.log(`Open Telegram, find @${me.result.username}, send /start, then run this again.`);
-    console.log('(Telegram only keeps updates for 24 hours.)');
+    console.log('No pending chats.');
+    if (configured) {
+      // getUpdates only returns updates that have not been fetched yet, so an
+      // empty list here is normal once the chat ID is known.
+      console.log('That is expected — the update was already consumed. Nothing to do.');
+    } else {
+      console.log(`Open Telegram, find @${me.result.username}, send /start, then run this again.`);
+      console.log('(Telegram only keeps updates for 24 hours.)');
+    }
     return;
   }
 
