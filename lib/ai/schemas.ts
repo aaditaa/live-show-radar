@@ -18,6 +18,8 @@ export const EARLY_BIRD_STATUSES = [
   'not_mentioned',
 ] as const;
 
+export type EarlyBirdStatus = (typeof EARLY_BIRD_STATUSES)[number];
+
 export const showCandidateSchema = z.object({
   artist_name: z.string(),
   artist_match_confidence: z.number().min(0).max(1),
@@ -111,4 +113,83 @@ export const EXTRACT_RESPONSE_SCHEMA: Record<string, unknown> = {
     },
   },
   required: ['shows'],
+};
+
+/* ---------- Task 2: reconcile ---------- */
+
+export const MATERIAL_CHANGES = [
+  'none',
+  'early_bird_opened',
+  'early_bird_deadline_set',
+  'venue_announced',
+  'date_changed',
+  'on_sale_announced',
+  'sold_out',
+  'cancelled',
+] as const;
+
+export type MaterialChange = (typeof MATERIAL_CHANGES)[number];
+
+export const reconcileResponseSchema = z.object({
+  same_show: z.boolean(),
+  changes: z.array(
+    z.object({
+      field: z.string(),
+      old: nullableText,
+      new: nullableText,
+    }),
+  ),
+  material_change: z.enum(MATERIAL_CHANGES),
+});
+
+export type ReconcileResponse = z.infer<typeof reconcileResponseSchema>;
+
+export const RECONCILE_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  properties: {
+    same_show: { type: 'boolean' },
+    changes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          field: { type: 'string' },
+          old: { type: ['string', 'null'] },
+          new: { type: ['string', 'null'] },
+        },
+        required: ['field', 'old', 'new'],
+      },
+    },
+    material_change: { type: 'string', enum: [...MATERIAL_CHANGES] },
+  },
+  required: ['same_show', 'changes', 'material_change'],
+};
+
+/* ---------- Task 3: prioritise and write the alert ---------- */
+
+export const PRIORITIES = ['P0', 'P1', 'P2', 'P3'] as const;
+
+export const alertResponseSchema = z.object({
+  priority: z.enum(PRIORITIES),
+  headline: z.string(),
+  message: z.string(),
+  action_by: nullableText,
+  reason: z.string(),
+});
+
+export type AlertResponse = z.infer<typeof alertResponseSchema>;
+
+export const ALERT_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  properties: {
+    priority: { type: 'string', enum: [...PRIORITIES] },
+    headline: { type: 'string' },
+    message: {
+      type: 'string',
+      description: 'Telegram HTML, at most 600 characters',
+    },
+    action_by: { type: ['string', 'null'], description: 'ISO 8601 datetime or null' },
+    reason: { type: 'string' },
+  },
+  required: ['priority', 'headline', 'message', 'action_by', 'reason'],
 };

@@ -19,8 +19,14 @@ import {
 } from '@/lib/pipeline/batch';
 import { filterNewItems, insertSourceItems } from '@/lib/pipeline/filter';
 import { loadUnprocessedItems, runExtractStage } from '@/lib/pipeline/extract-stage';
+import { runReconcileStage } from '@/lib/pipeline/reconcile-stage';
+import {
+  deliverAlerts,
+  findEarlyBirdDeadlinesDue,
+  type AlertRequest,
+} from '@/lib/pipeline/alerts';
 import type { RejectionReason } from '@/lib/pipeline/match';
-import { artists as artistsTable } from '@/db/schema';
+import { artists as artistsTable, users as usersTable } from '@/db/schema';
 
 export const FETCH_CONCURRENCY = 5;
 export const FETCH_TIMEOUT_MS = 10_000;
@@ -109,6 +115,8 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
   let itemsNew = 0;
   let geminiCalls = 0;
   let showsNew = 0;
+  let showsUpdated = 0;
+  let alertsSent = 0;
   let rejectedCandidates: Record<RejectionReason, number> = {
     not_a_show_announcement: 0,
     not_india: 0,
@@ -162,6 +170,60 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
       showsNew = extract.newShows.length;
       rejectedCandidates = extract.rejections;
       errors.push(...extract.errors);
+
+      const artistNameById = new Map(allArtists.map((artist) => [artist.id, artist.name]));
+
+      // Task 2: an existing show the candidate may have changed.
+      const reconcile = await runReconcileStage(extract.existingMatches, {
+        scanRunId: run.id,
+        now,
+      });
+      geminiCalls += reconcile.geminiCalls;
+      showsUpdated = reconcile.updated.length;
+      errors.push(...reconcile.errors);
+
+      // Task 3 plus delivery, for every new show and every material change.
+      const user = (await db.select().from(usersTable).limit(1))[0];
+      if (user) {
+        const requests: AlertRequest[] = [
+          ...extract.newShows.map((show) => ({
+            show,
+            artistName: artistNameById.get(show.artistId) ?? 'Unknown artist',
+            alertType: 'new_show' as const,
+            changeRef: 'initial',
+          })),
+          ...reconcile.updated.map((change) => ({
+            show: change.show,
+            artistName: artistNameById.get(change.show.artistId) ?? 'Unknown artist',
+            alertType:
+              change.materialChange === 'early_bird_opened'
+                ? ('early_bird_opened' as const)
+                : ('show_updated' as const),
+            changeRef: change.materialChange,
+            changeNote: change.summary,
+          })),
+        ];
+
+        const delivered = await deliverAlerts(requests, user, { scanRunId: run.id });
+        alertsSent = delivered.sent;
+        errors.push(...delivered.errors);
+      }
+    }
+
+    // Every scan: remind about early-bird windows closing within 24 hours.
+    const user = (await db.select().from(usersTable).limit(1))[0];
+    if (user) {
+      const due = await findEarlyBirdDeadlinesDue(now);
+      const reminders: AlertRequest[] = due.map((item) => ({
+        show: item.show,
+        artistName: item.artistName,
+        alertType: 'early_bird_deadline_soon' as const,
+        // The deadline is the key, so a moved deadline can legitimately re-alert.
+        changeRef: item.show.earlyBirdDeadline?.toISOString() ?? 'unknown',
+      }));
+      const delivered = await deliverAlerts(reminders, user, { scanRunId: run.id });
+      alertsSent += delivered.sent;
+      errors.push(...delivered.errors);
     }
 
     await markArtistsChecked(batch, now);
@@ -181,6 +243,8 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
       itemsNew,
       geminiCalls,
       showsNew,
+      showsUpdated,
+      alertsSent,
       errors,
     })
     .where(eq(scanRuns.id, run.id));
@@ -200,9 +264,8 @@ export async function runScan(trigger: ScanTrigger): Promise<ScanSummary> {
     geminiCalls,
     showsNew,
     rejectedCandidates,
-    // Task 2 reconcile and Task 3 alerts arrive in M4.
-    showsUpdated: 0,
-    alertsSent: 0,
+    showsUpdated,
+    alertsSent,
     errors,
   };
 }

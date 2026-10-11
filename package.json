@@ -12,7 +12,8 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
-    "db:due": "tsx scripts/make-due.ts"
+    "db:due": "tsx scripts/make-due.ts",
+    "telegram:chat-id": "tsx scripts/get-chat-id.ts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",
