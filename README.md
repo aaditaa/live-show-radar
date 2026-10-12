@@ -130,6 +130,34 @@ explains it.
 - **P2** — any other Indian city
 - **P3** — confidence below 0.8; shown on the dashboard, never pushed
 
+## Technical trade-offs
+
+Each of these was a fork in the road, not a default.
+
+| Decision | Instead of | Why |
+| --- | --- | --- |
+| **Priority is computed in code; Gemini only explains it** | Letting the model return a priority | A model's priority cannot be unit tested or reproduced. The rules are twelve lines and have twelve tests; the model's job is language, not consequences. |
+| **The alert row is claimed in Postgres *before* Gemini and Telegram are called** | Checking "already sent?" then sending | Check-then-act races. Two overlapping scans could both pass the check. Inserting first makes the unique constraint on `alert_key` the actual lock, so a duplicate is impossible rather than unlikely. |
+| **Grounding is used for discovery only** | Trusting the model's grounded summary | Grounding and structured output cannot be combined in one Gemini call. Rather than accept unvalidated prose, the URLs it grounds on are fed back through Task 1, so a grounded result faces the same evidence rules as any other. |
+| **Task 1 reports near misses; code refuses them** | Letting the prompt silently drop them | Silent filtering is unauditable, and the brief's step 6 filters on `is_show_announcement` and `country`, which only exist if the model reports them. The refusals are now evidence on `/filtered`. |
+| **Extraction consumes unprocessed `source_items`** | Extracting only what this run fetched | A scan that dies after storing items would strand them forever. Reading from `processed_at` means the next run picks up the backlog. This is what took the first real extraction from 0 shows to 4. |
+| **An artist found via Spotify search keeps `source: 'manual'`** | Marking them `'spotify'` | `source` records how an artist joined the list, and a sync deactivates `'spotify'` rows that are no longer followed. Relabelling would make the next sync silently deactivate artists the user added by hand. |
+| **A batch of 15 artists per scan** | Scanning everyone every run | Vercel's 300 s ceiling and Tavily's 1,000 free credits a month are both real limits. Bounded batches keep every run at a few seconds and the monthly spend near 790 credits. |
+| **The 600-character alert budget counts visible text** | Counting the raw HTML | Google News article links are ~500-character base64 redirects, so a single link would blow the budget while the message a reader sees stays near 250 characters. |
+| **Unfollowed Spotify artists are deactivated, not deleted** | Deleting the row | Deleting cascades to their shows and alert history. Deactivating stops the scanning and keeps the record. |
+| **`@neondatabase/serverless` over HTTP, no transactions** | A pooled connection with real transactions | Serverless functions churn connections. The pipeline's integrity comes from unique constraints (`url_hash`, `dedup_key`, `alert_key`) and conflict-ignoring inserts, which survive concurrency without a transaction. |
+
+## Reliability
+
+Failure is expected at every external boundary, so each one is contained:
+
+- **One source failing never fails a scan.** Fetches run through a concurrency limiter that *settles* rather than rejects; each failure is recorded against the scan run in the `errors` column and the run continues.
+- **Every external call has a timeout and a retry policy.** 10 s per fetch; 429 and 5xx retried with backoff that honours `Retry-After`; 4xx not retried, because a bad key will not fix itself.
+- **Invalid model output is retried once**, with the validation error fed back, then logged and skipped.
+- **Idempotency is enforced by the database**, not by application checks: `url_hash` stops an article being processed twice, `dedup_key` stops a show being duplicated, `alert_key` stops an alert being sent twice.
+- **The schedulers fail loudly.** `/api/scan` returns 401 rather than redirecting, so a missing secret breaks the GitHub Actions step instead of silently succeeding against a login page.
+- **13 reliability tests** cover failure isolation, the concurrency limit, retry and give-up behaviour, and that a dead source returns an error as *data* rather than throwing.
+
 ## Local setup
 
 ```bash
@@ -146,7 +174,7 @@ Use `127.0.0.1`, not `localhost` — Spotify no longer accepts `localhost` as a 
 
 | Script | Purpose |
 | --- | --- |
-| `npm test` | 135 unit tests |
+| `npm test` | 154 tests |
 | `npm run db:generate` | Generate a migration from `db/schema.ts` |
 | `npm run db:migrate` / `db:seed` | Apply migrations / seed |
 | `npm run db:due` | Mark every artist due, to re-run a scan without waiting |
