@@ -96,7 +96,7 @@ def arrow(x1, y1, x2, y2, dashed=False, colour=None):
 
 # actor(title, sub), then one entry per column 1..6: None or (palette, title, body)
 ROWS = [
-    (("Schedulers", "GitHub Actions + Vercel Cron"), 54, [
+    (("Schedulers", "GitHub Actions + Vercel Cron"), 46, [
         (PLAIN, "Every 30 minutes", "daily cron as backup"),
         None,
         (PLAIN, "CRON_SECRET", "repo + Vercel secret"),
@@ -104,7 +104,15 @@ ROWS = [
         None,
         (OUTPUT, "Scan run opened", "scan_runs row"),
     ]),
-    (("Sources", "Google News - Tavily - Gemini"), 64, [
+    (("Artist intake", "Spotify Web API"), 56, [
+        (PLAIN, "Daily cron, or admin", "Sync, search, CSV"),
+        (PLAIN, "GET /me/following", "cursor-paginated, 50 per page"),
+        (PLAIN, "OAuth, user-follow-read", "tokens server-side, refreshed"),
+        (SYSTEM, "Sync + catalogue search", "unfollowed deactivated, never deleted"),
+        None,
+        (OUTPUT, "artists rows", "Spotify or manual, with artwork"),
+    ]),
+    (("Sources", "Google News - Tavily - Gemini"), 56, [
         (PLAIN, "Scan opens", None),
         (PLAIN, "15 due artists", "names + aliases, starred first"),
         (PLAIN, "14-day window", "5 Indian ticketing sites; 6 h sweep gap"),
@@ -112,7 +120,7 @@ ROWS = [
         (AI, "Grounded search", "optional, starred only"),
         (OUTPUT, "Normalised items", "{source, url, title, snippet, date}"),
     ]),
-    (("Filter", "Deduplication"), 54, [
+    (("Filter", "Deduplication"), 46, [
         (PLAIN, "Items fetched", None),
         (PLAIN, "All items this scan", None),
         (PLAIN, "url_hash index", "all previous scans; 30-day limit"),
@@ -120,7 +128,7 @@ ROWS = [
         None,
         (OUTPUT, "source_items", "only genuinely new items continue"),
     ]),
-    (("Show extractor", "Gemini Task 1"), 64, [
+    (("Show extractor", "Gemini Task 1"), 56, [
         (PLAIN, "Unprocessed items", None),
         (PLAIN, "Artist + aliases", "up to 25 items per call"),
         (PLAIN, "Appendix B schema", "today's date; full artist list"),
@@ -128,7 +136,7 @@ ROWS = [
         (AI, "Extract candidates", "reports near misses honestly"),
         (OUTPUT, "Show candidates", "with evidence quote + source URL"),
     ]),
-    (("Triage + matcher", "Rules in code"), 68, [
+    (("Triage + matcher", "Rules in code"), 56, [
         (PLAIN, "After extraction", None),
         (PLAIN, "Show candidates", None),
         (PLAIN, "Keep rules", "India, confidence 0.7+, upcoming"),
@@ -136,7 +144,7 @@ ROWS = [
         None,
         (OUTPUT, "Accepted", "new show, or an existing match"),
     ]),
-    (("Rejection log", "What it refused"), 54, [
+    (("Rejection log", "What it refused"), 46, [
         (PLAIN, "A candidate fails", None),
         (PLAIN, "Candidate + reason", None),
         (PLAIN, "Six reasons", "not India, tribute, namesake, past"),
@@ -144,7 +152,7 @@ ROWS = [
         None,
         (REJECT, "rejections", "shown on /filtered, never alerted"),
     ]),
-    (("Reconciler", "Gemini Task 2"), 58, [
+    (("Reconciler", "Gemini Task 2"), 50, [
         (PLAIN, "dedup_key exists", None),
         (PLAIN, "Stored show + candidate", None),
         (PLAIN, "Null means unreported", "never cleared"),
@@ -152,7 +160,7 @@ ROWS = [
         (AI, "Same show? changed?", "one material change"),
         (OUTPUT, "Show updated", "flagged when worth an alert"),
     ]),
-    (("Prioritiser + writer", "Rules in code + Gemini Task 3"), 68, [
+    (("Prioritiser + writer", "Rules in code + Gemini Task 3"), 56, [
         (PLAIN, "New show or change", None),
         (PLAIN, "City, confidence, early bird", None),
         (PLAIN, "P0 Bengaluru + early bird", "P1 / P2 / P3 by rule"),
@@ -160,7 +168,7 @@ ROWS = [
         (AI, "Write the alert", "600 visible chars, explains priority"),
         (OUTPUT, "Alert ready", "P3 stops here: dashboard only"),
     ]),
-    (("Notifier", "Telegram Bot API - Resend"), 58, [
+    (("Notifier", "Telegram Bot API - Resend"), 50, [
         (PLAIN, "Alert written", None),
         (PLAIN, "Message + chat ID", None),
         (PLAIN, "alert_key unique", "show | type | channel | change"),
@@ -168,7 +176,7 @@ ROWS = [
         None,
         (OUTPUT, "Karan is alerted", "alerts row with delivery status"),
     ]),
-    (("Karan", "Bengaluru"), 48, [
+    (("Karan", "Bengaluru"), 44, [
         (PLAIN, "Phone buzzes", None),
         (PLAIN, "[BUY TODAY] ...", None),
         None,
@@ -176,7 +184,15 @@ ROWS = [
         None,
         (HUMAN, "Buys the early bird", "before the window closes"),
     ]),
-    (("Database + dashboard", "Neon Postgres - Next.js"), 54, [
+    (("Artist suggestions", "Gemini"), 48, [
+        (PLAIN, "Admin asks", None),
+        (PLAIN, "Everyone followed", "starred weighted first"),
+        (PLAIN, "Spotify recs API closed", "to apps made after Nov 2024"),
+        (SYSTEM, "Exclude the known", "look up artwork"),
+        (AI, "Suggest similar", "likely to play India"),
+        (OUTPUT, "artist_suggestions", "Add or Dismiss on /artists"),
+    ]),
+    (("Database + dashboard", "Neon Postgres - Next.js"), 46, [
         (PLAIN, "Every stage / a visit", None),
         (PLAIN, "Nine tables", None),
         (PLAIN, "UTC stored", "Asia/Kolkata displayed"),
@@ -188,7 +204,7 @@ ROWS = [
 
 TITLE_H = 44
 HEAD_H = 22
-DEPLOY_H = 44
+DEPLOY_H = 40
 LEGEND_H = 18
 
 body_h = sum(r[1] for r in ROWS)
@@ -211,7 +227,7 @@ c.setFillColor(colors.HexColor("#c2410c"))
 c.drawRightString(W - M, top - 15, "live-show-radar-pink.vercel.app")
 c.setFont("Helvetica", 7.2)
 c.setFillColor(MUTED)
-c.drawRightString(W - M, top - 28, "5 Gemini tasks  -  20 components  -  141 tests")
+c.drawRightString(W - M, top - 28, "5 Gemini tasks  -  13 actors  -  141 tests")
 
 y = top - TITLE_H
 
@@ -251,9 +267,9 @@ for idx, ((actor, actor_sub), rh, cells) in enumerate(ROWS):
             continue
         palette, ctitle, cbody = cell
         bw = CW[i] - 16
-        bh = rh - 16
+        bh = rh - 14
         bx = CX[i] + 8
-        by = ybot + 8
+        by = ybot + 7
         box(bx, by, bw, bh, palette, ctitle, cbody)
         placed.append((bx, by, bw, bh))
 
