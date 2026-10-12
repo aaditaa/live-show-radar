@@ -1,12 +1,16 @@
-"""Components map: two landscape A3 pages of colour-coded boxes and arrows."""
+"""Components map: one landscape A2 page of colour-coded boxes and arrows.
+
+A2 rather than A3 so all nineteen actors fit at a readable size on a single
+page, instead of shrinking the text to fit a smaller sheet.
+"""
 import math
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A3, landscape
+from reportlab.lib.pagesizes import A2, landscape
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 
 OUT = "/Users/aaditaavashisht/code/live-show-radar/docs/components-map.pdf"
-W, H = landscape(A3)
+W, H = landscape(A2)
 
 INK    = colors.HexColor("#1b2130")
 HEADBG = colors.HexColor("#273449")
@@ -23,9 +27,9 @@ HUMAN  = (colors.HexColor("#fcecd2"), colors.HexColor("#e3bd78"))
 REJECT = (colors.HexColor("#fbdcdc"), colors.HexColor("#e39a9a"))
 PLAIN  = (colors.HexColor("#eef2f7"), colors.HexColor("#c3cedd"))
 
-M = 22
+M = 26
 COLS = ["Actor / Platform", "Trigger", "Input", "Context", "Processing", "AI", "Output"]
-RAW_W = [138, 118, 140, 142, 150, 142, 178]
+RAW_W = [150, 120, 145, 150, 158, 145, 180]
 AVAIL = W - 2 * M
 CW = [w / sum(RAW_W) * AVAIL for w in RAW_W]
 CX, _x = [], M
@@ -33,9 +37,9 @@ for w in CW:
     CX.append(_x)
     _x += w
 
-TITLE_H, HEAD_H, DEPLOY_H = 42, 22, 38
+TITLE_H, HEAD_H, DEPLOY_H = 52, 26, 46
 
-c = canvas.Canvas(OUT, pagesize=landscape(A3))
+c = canvas.Canvas(OUT, pagesize=landscape(A2))
 c.setTitle("Live Show Radar - Components Map")
 
 
@@ -53,38 +57,36 @@ def wrap(text, font, size, maxw):
     return lines
 
 
-def box(x, y, w, h, palette, title, body=None, ts=7.3, bs=6.4):
+def box(x, y, w, h, palette, title, body=None, ts=8.6, bs=7.5):
     fill, stroke = palette
     c.setFillColor(fill)
     c.setStrokeColor(stroke)
-    c.setLineWidth(0.7)
-    c.roundRect(x, y, w, h, 4, fill=1, stroke=1)
-    pad = 5
+    c.setLineWidth(0.8)
+    c.roundRect(x, y, w, h, 5, fill=1, stroke=1)
+    pad = 6
     tl = wrap(title, "Helvetica-Bold", ts, w - 2 * pad)
     bl = wrap(body, "Helvetica", bs, w - 2 * pad) if body else []
-    total = len(tl) * (ts + 1.5) + len(bl) * (bs + 1.3)
+    total = len(tl) * (ts + 1.8) + len(bl) * (bs + 1.5)
     ty = y + h / 2 + total / 2 - ts
     c.setFillColor(INK)
     c.setFont("Helvetica-Bold", ts)
     for line in tl:
         c.drawCentredString(x + w / 2, ty, line)
-        ty -= ts + 1.5
+        ty -= ts + 1.8
     c.setFillColor(MUTED)
     c.setFont("Helvetica", bs)
     for line in bl:
         c.drawCentredString(x + w / 2, ty, line)
-        ty -= bs + 1.3
+        ty -= bs + 1.5
 
 
-def arrow(x1, y1, x2, y2, dashed=False):
+def arrow(x1, y1, x2, y2):
     col = colors.HexColor("#6b7686")
     c.setStrokeColor(col)
-    c.setLineWidth(0.9)
-    c.setDash([2.2, 2.2] if dashed else [])
+    c.setLineWidth(1.0)
     c.line(x1, y1, x2, y2)
-    c.setDash([])
     ang = math.atan2(y2 - y1, x2 - x1)
-    s = 4.2
+    s = 5.0
     c.setFillColor(col)
     p = c.beginPath()
     p.moveTo(x2, y2)
@@ -94,7 +96,7 @@ def arrow(x1, y1, x2, y2, dashed=False):
     c.drawPath(p, fill=1, stroke=0)
 
 
-PAGE1 = [
+ROWS = [
     (("Schedulers", "GitHub Actions + Vercel Cron"), 44, [
         (PLAIN, "Every 30 minutes", "Vercel daily cron 08:00 IST as backup"),
         None,
@@ -201,7 +203,7 @@ PAGE1 = [
     ]),
 ]
 
-PAGE2 = [
+ROWS += [
     (("Artist sync", "Spotify Web API"), 62, [
         (PLAIN, "Daily Vercel cron", "or Sync Spotify in the admin UI"),
         (PLAIN, "GET /me/following", "type=artist, limit=50, cursor-paginated"),
@@ -253,33 +255,35 @@ PAGE2 = [
 ]
 
 
-def render(rows, page_no, page_total, subtitle, deploy=False):
+def render(rows):
     top = H - M
     c.setFillColor(INK)
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(M, top - 14, "Live Show Radar")
-    c.setFont("Helvetica", 18)
-    off = stringWidth("Live Show Radar", "Helvetica-Bold", 18) + 7
-    c.drawString(M + off, top - 14, "·  Components map")
+    c.setFont("Helvetica-Bold", 23)
+    c.drawString(M, top - 19, "Live Show Radar")
+    c.setFont("Helvetica", 23)
+    off = stringWidth("Live Show Radar", "Helvetica-Bold", 23) + 10
+    c.drawString(M + off, top - 19, "\u00b7  Components map")
     c.setFillColor(MUTED)
-    c.setFont("Helvetica", 7.6)
-    c.drawString(M, top - 27, subtitle)
+    c.setFont("Helvetica", 9.2)
+    c.drawString(M, top - 36,
+                 "Every actor, left to right: what starts it, what it is given, what it knows, "
+                 "what it does, where the model is involved, and what comes out. "
+                 "No show is hard-coded \u2014 every one is found at runtime from live sources.")
     c.setFillColor(ACCENT)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawRightString(W - M, top - 13, "live-show-radar-pink.vercel.app")
+    c.setFont("Helvetica-Bold", 10)
+    c.drawRightString(W - M, top - 18, "live-show-radar-pink.vercel.app")
     c.setFillColor(MUTED)
-    c.setFont("Helvetica", 7)
-    c.drawRightString(W - M, top - 25,
+    c.setFont("Helvetica", 8.6)
+    c.drawRightString(W - M, top - 33,
                       "All AI on gemini-3.8-flash via @google/genai  -  no other model anywhere")
-    c.drawRightString(W - M, top - 35, f"Page {page_no} of {page_total}")
 
     y = top - TITLE_H
     c.setFillColor(HEADBG)
     c.roundRect(M, y - HEAD_H, AVAIL, HEAD_H, 3, fill=1, stroke=0)
     c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 8.4)
+    c.setFont("Helvetica-Bold", 10)
     for i, name in enumerate(COLS):
-        c.drawCentredString(CX[i] + CW[i] / 2, y - HEAD_H + 7.4, name)
+        c.drawCentredString(CX[i] + CW[i] / 2, y - HEAD_H + 9, name)
     y -= HEAD_H
 
     for idx, ((actor, actor_sub), rh, cells) in enumerate(rows):
@@ -291,12 +295,12 @@ def render(rows, page_no, page_total, subtitle, deploy=False):
         c.line(M, ybot, M + AVAIL, ybot)
 
         c.setFillColor(INK)
-        c.setFont("Helvetica-Bold", 8.5)
-        c.drawString(CX[0] + 8, ybot + rh / 2 + 1.5, actor)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(CX[0] + 10, ybot + rh / 2 + 2, actor)
         c.setFillColor(MUTED)
-        c.setFont("Helvetica", 6.7)
-        for j, line in enumerate(wrap(actor_sub, "Helvetica", 6.7, CW[0] - 14)):
-            c.drawString(CX[0] + 8, ybot + rh / 2 - 8 - j * 7.8, line)
+        c.setFont("Helvetica", 7.9)
+        for j, line in enumerate(wrap(actor_sub, "Helvetica", 7.9, CW[0] - 20)):
+            c.drawString(CX[0] + 10, ybot + rh / 2 - 9.5 - j * 9.2, line)
 
         placed = []
         for i, cell in enumerate(cells, start=1):
@@ -304,69 +308,63 @@ def render(rows, page_no, page_total, subtitle, deploy=False):
                 placed.append(None)
                 continue
             pal, t, b = cell
-            bx, by, bw, bh = CX[i] + 8, ybot + 7, CW[i] - 16, rh - 14
+            bx, by, bw, bh = CX[i] + 9, ybot + 8, CW[i] - 18, rh - 16
             box(bx, by, bw, bh, pal, t, b)
             placed.append((bx, by, bw, bh))
 
         for i in range(len(placed) - 1):
             a, b2 = placed[i], placed[i + 1]
-            if not a or not b2 or b2[0] - (a[0] + a[2]) < 3:
+            if not a or not b2 or b2[0] - (a[0] + a[2]) < 4:
                 continue
-            arrow(a[0] + a[2] + 1.5, a[1] + a[3] / 2, b2[0] - 2, b2[1] + b2[3] / 2)
+            arrow(a[0] + a[2] + 2, a[1] + a[3] / 2, b2[0] - 2.5, b2[1] + b2[3] / 2)
         y = ybot
 
-    if deploy:
-        dy = y - 8
-        c.setFillColor(colors.HexColor("#f2f5fa"))
-        c.setStrokeColor(GRID)
-        c.setLineWidth(0.6)
-        c.roundRect(M, dy - DEPLOY_H, AVAIL, DEPLOY_H, 4, fill=1, stroke=1)
-        c.setFillColor(INK)
-        c.setFont("Helvetica-Bold", 8.3)
-        c.drawString(M + 12, dy - 17, "Deployment")
-        c.setFillColor(MUTED)
-        c.setFont("Helvetica", 6.7)
-        c.drawString(M + 12, dy - 27, "code to production")
-        chain = [
-            (SYSTEM, "GitHub", "repository + Actions cron"),
-            (SYSTEM, "Vercel", "Next.js 16, 300 s ceiling"),
-            (SYSTEM, "Neon Postgres", "Drizzle migrations"),
-            (OUTPUT, "Live app", "scans every 30 min"),
-        ]
-        cw, gap, sx = 150, 34, M + 150
-        for i, (pal, t, b) in enumerate(chain):
-            bx = sx + i * (cw + gap)
-            box(bx, dy - DEPLOY_H + 6, cw, DEPLOY_H - 12, pal, t, b)
-            if i:
-                arrow(bx - gap + 2, dy - DEPLOY_H / 2, bx - 3, dy - DEPLOY_H / 2)
-        y = dy - DEPLOY_H
+    dy = y - 10
+    c.setFillColor(colors.HexColor("#f2f5fa"))
+    c.setStrokeColor(GRID)
+    c.setLineWidth(0.6)
+    c.roundRect(M, dy - DEPLOY_H, AVAIL, DEPLOY_H, 5, fill=1, stroke=1)
+    c.setFillColor(INK)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(M + 14, dy - 20, "Deployment")
+    c.setFillColor(MUTED)
+    c.setFont("Helvetica", 7.9)
+    c.drawString(M + 14, dy - 32, "code to production")
+    chain = [
+        (SYSTEM, "GitHub", "repository + Actions cron"),
+        (SYSTEM, "Vercel", "Next.js 16, 300 s ceiling"),
+        (SYSTEM, "Neon Postgres", "Drizzle migrations"),
+        (OUTPUT, "Live app", "scans every 30 min"),
+    ]
+    cw, gap, sx = 230, 48, M + 200
+    for i, (pal, t, b) in enumerate(chain):
+        bx = sx + i * (cw + gap)
+        box(bx, dy - DEPLOY_H + 7, cw, DEPLOY_H - 14, pal, t, b)
+        if i:
+            arrow(bx - gap + 3, dy - DEPLOY_H / 2, bx - 3, dy - DEPLOY_H / 2)
+    y = dy - DEPLOY_H
 
-    ly = y - 15
+    ly = y - 18
     items = [(AI, "AI component"), (SYSTEM, "System step"), (OUTPUT, "Output"),
              (HUMAN, "Human step"), (REJECT, "Refused / not alerted"), (PLAIN, "Context")]
     lx = M
     for (fill, stroke), label in items:
         c.setFillColor(fill)
         c.setStrokeColor(stroke)
-        c.setLineWidth(0.7)
-        c.roundRect(lx, ly - 7, 15, 9, 2, fill=1, stroke=1)
+        c.setLineWidth(0.8)
+        c.roundRect(lx, ly - 8, 18, 11, 2, fill=1, stroke=1)
         c.setFillColor(MUTED)
-        c.setFont("Helvetica", 7)
-        c.drawString(lx + 20, ly - 5, f"= {label}")
-        lx += 20 + stringWidth(f"= {label}", "Helvetica", 7) + 22
+        c.setFont("Helvetica", 8.3)
+        c.drawString(lx + 24, ly - 5, f"= {label}")
+        lx += 24 + stringWidth(f"= {label}", "Helvetica", 8.3) + 28
     c.setFillColor(MUTED)
-    c.setFont("Helvetica", 7)
+    c.setFont("Helvetica", 8.3)
     c.drawRightString(W - M, ly - 5,
                       "Priority is decided in code, never by the model. "
                       "The model judges language; code decides consequences.")
     c.showPage()
 
 
-render(PAGE1, 1, 2,
-       "Finding a show and alerting. No show is hard-coded: every one is discovered at runtime "
-       "from live sources, then filtered, prioritised and sent.")
-render(PAGE2, 2, 2,
-       "Artists, data and operations. How the watch list is built and kept, where everything is "
-       "stored, and who is allowed to see it.", deploy=True)
+render(ROWS)
 c.save()
 print("wrote", OUT)
