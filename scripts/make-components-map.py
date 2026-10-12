@@ -1,293 +1,324 @@
+"""Components map as a flow diagram: boxes per column, arrows for the flow."""
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A3, landscape
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.platypus import (
-    KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
-)
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.pdfgen import canvas
 
 OUT = "/Users/aaditaavashisht/code/live-show-radar/docs/components-map.pdf"
+W, H = landscape(A3)
 
-INK = colors.HexColor("#1f2430")
-HEAD = colors.HexColor("#273449")
-LINE = colors.HexColor("#c9d2e0")
-ZEBRA = colors.HexColor("#f4f7fb")
-ACCENT = colors.HexColor("#c2410c")
+INK      = colors.HexColor("#1b2130")
+HEADBG   = colors.HexColor("#273449")
+GRID     = colors.HexColor("#d7dee9")
+BANDA    = colors.HexColor("#ffffff")
+BANDB    = colors.HexColor("#f7f9fc")
+MUTED    = colors.HexColor("#5d6878")
 
-styles = getSampleStyleSheet()
-cell = ParagraphStyle("cell", parent=styles["BodyText"], fontName="Helvetica",
-                      fontSize=7.4, leading=9.4, alignment=TA_LEFT,
-                      textColor=INK, spaceAfter=0, spaceBefore=0)
-cell_b = ParagraphStyle("cellb", parent=cell, fontName="Helvetica-Bold")
-cell_ai = ParagraphStyle("cellai", parent=cell, textColor=ACCENT)
-cell_mono = ParagraphStyle("cellm", parent=cell, fontName="Courier", fontSize=6.7, leading=8.6)
-head = ParagraphStyle("head", parent=cell, fontName="Helvetica-Bold", fontSize=8,
-                      leading=10, textColor=colors.white)
-title = ParagraphStyle("title", parent=styles["Title"], fontSize=17, leading=21,
-                       textColor=INK, spaceAfter=2)
-sub = ParagraphStyle("sub", parent=styles["Normal"], fontSize=8.6, leading=12,
-                     textColor=colors.HexColor("#5b6678"))
-h2 = ParagraphStyle("h2", parent=styles["Heading2"], fontSize=10.5, leading=13,
-                    textColor=INK, spaceBefore=10, spaceAfter=4)
-note = ParagraphStyle("note", parent=sub, fontSize=7.8, leading=10.4)
+AI       = (colors.HexColor("#ece5fb"), colors.HexColor("#b8a4ec"))
+SYSTEM   = (colors.HexColor("#dde9f8"), colors.HexColor("#9dbde3"))
+OUTPUT   = (colors.HexColor("#d9efdd"), colors.HexColor("#8dc79a"))
+HUMAN    = (colors.HexColor("#fcecd2"), colors.HexColor("#e3bd78"))
+REJECT   = (colors.HexColor("#fbdcdc"), colors.HexColor("#e39a9a"))
+PLAIN    = (colors.HexColor("#eef2f7"), colors.HexColor("#c3cedd"))
 
+M = 22
 COLS = ["Actor / Platform", "Trigger", "Input", "Context", "Processing", "AI", "Output"]
+RAW_W = [138, 118, 140, 142, 150, 142, 178]
+AVAIL = W - 2 * M
+CW = [w / sum(RAW_W) * AVAIL for w in RAW_W]
+CX = []
+_x = M
+for w in CW:
+    CX.append(_x)
+    _x += w
 
-# Actor, Trigger, Input, Context, Processing, AI, Output
+c = canvas.Canvas(OUT, pagesize=landscape(A3))
+c.setTitle("Live Show Radar - Components Map")
+
+
+def wrap(text, font, size, maxw):
+    words, lines, cur = text.split(), [], ""
+    for word in words:
+        trial = f"{cur} {word}".strip()
+        if stringWidth(trial, font, size) <= maxw or not cur:
+            cur = trial
+        else:
+            lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    return lines
+
+
+def box(cx, cy, w, h, palette, title, body=None, bold_size=7.4, body_size=6.6):
+    fill, stroke = palette
+    c.setFillColor(fill)
+    c.setStrokeColor(stroke)
+    c.setLineWidth(0.7)
+    c.roundRect(cx, cy, w, h, 4, fill=1, stroke=1)
+
+    pad = 5
+    tlines = wrap(title, "Helvetica-Bold", bold_size, w - 2 * pad)
+    blines = wrap(body, "Helvetica", body_size, w - 2 * pad) if body else []
+    total = len(tlines) * (bold_size + 1.6) + len(blines) * (body_size + 1.4)
+    y = cy + h / 2 + total / 2 - bold_size
+
+    c.setFillColor(INK)
+    c.setFont("Helvetica-Bold", bold_size)
+    for line in tlines:
+        c.drawCentredString(cx + w / 2, y, line)
+        y -= bold_size + 1.6
+    c.setFillColor(MUTED)
+    c.setFont("Helvetica", body_size)
+    for line in blines:
+        c.drawCentredString(cx + w / 2, y, line)
+        y -= body_size + 1.4
+
+
+def arrow(x1, y1, x2, y2, dashed=False, colour=None):
+    c.setStrokeColor(colour or colors.HexColor("#6b7686"))
+    c.setLineWidth(0.9)
+    c.setDash([2.2, 2.2] if dashed else [])
+    c.line(x1, y1, x2, y2)
+    c.setDash([])
+    # Head, oriented along the segment.
+    import math
+    ang = math.atan2(y2 - y1, x2 - x1)
+    size = 4.2
+    c.setFillColor(colour or colors.HexColor("#6b7686"))
+    p = c.beginPath()
+    p.moveTo(x2, y2)
+    p.lineTo(x2 - size * math.cos(ang - 0.42), y2 - size * math.sin(ang - 0.42))
+    p.lineTo(x2 - size * math.cos(ang + 0.42), y2 - size * math.sin(ang + 0.42))
+    p.close()
+    c.drawPath(p, fill=1, stroke=0)
+
+
+# actor(title, sub), then one entry per column 1..6: None or (palette, title, body)
 ROWS = [
-    ("1. Scheduler<br/>GitHub Actions + Vercel Cron",
-     "Cron: every 30 min; Vercel daily 02:30 UTC (08:00 IST); manual dispatch",
-     "None",
-     "APP_URL and CRON_SECRET as repository secrets; concurrency group prevents overlap",
-     "curl POST to /api/scan with a bearer token; fails the step on any non-2xx",
-     "—",
-     "A scan run; JSON summary written to the Actions run summary"),
-
-    ("2. Scan orchestrator<br/>Next.js route on Vercel",
-     "GET or POST /api/scan",
-     "trigger type; Authorization: Bearer CRON_SECRET or an admin session",
-     "scan_runs row; artists due by next_check_at; 300 s function ceiling",
-     "Opens a run, picks a bounded batch of 15 artists, fans out sources at concurrency 5 with 10 s timeouts, then closes the run with counts and per-source errors",
-     "—",
-     "scan_runs row; JSON summary of artists, items, shows, alerts and errors"),
-
-    ("3. Artist sync<br/>Spotify Web API",
-     "Daily Vercel cron, or Sync Spotify in the admin UI",
-     "GET /v1/me/following?type=artist&limit=50, cursor-paginated",
-     "OAuth tokens stored server-side and refreshed; scope user-follow-read",
-     "Inserts new follows; reactivates re-followed artists; deactivates unfollowed ones. Never touches manual artists",
-     "—",
-     "artists rows with source 'spotify', names and images"),
-
-    ("4. Artist intake<br/>Search, paste, CSV",
-     "Admin types in the header search, or pastes/imports CSV",
-     "Free-text query, or one name per line with optional aliases",
-     "Spotify catalogue via app-level token; existing list used to flag duplicates",
-     "Debounced catalogue search with a conservative name match; quote-aware CSV parsing; conflicts ignored",
-     "—",
-     "artists rows with source 'manual', with Spotify artwork"),
-
-    ("5. News fetcher<br/>Google News RSS",
-     "Every scan, per artist and per alias",
-     'Query: "&lt;artist&gt;" (India OR Bengaluru OR …) (concert OR tour OR tickets …) when:14d',
-     "India feed: hl=en-IN, gl=IN, ceid=IN:en. No API key",
-     "Fetches and parses XML with fast-xml-parser; normalises to {source, url, title, snippet, published_at}",
-     "—",
-     "Normalised items, source 'google_news'"),
-
-    ("6. Ticketing search<br/>Tavily Search API",
-     "Platform sweep at most every 6 h; one query a day per priority artist",
-     "Sweep queries, or '&lt;artist&gt; India tour tickets'",
-     "search_depth basic, include_answer false, country india; include_domains for District, BookMyShow, Skillbox, SortMyScene, HighApe; free tier 1,000 credits/month",
-     "POST /search, normalises results; caps enforced in code against the database",
-     "—",
-     "Normalised items, source 'tavily'"),
-
-    ("7. Grounded search<br/>Gemini google_search tool",
-     "Starred artists only, when ENABLE_GEMINI_GROUNDING is true (off by default)",
-     "Natural-language prompt asking only about India dates and ticket windows",
-     "Paid tier; cannot be combined with structured output",
-     "Harvests the URLs the model grounded on; the model's prose is kept only as a snippet, never trusted as fact",
-     "Gemini Flash — <b>ground</b>",
-     "Normalised items, source 'gemini_search'; an ai_calls row"),
-
-    ("8. Filter<br/>Deduplication",
-     "After every fetch",
-     "All normalised items from this scan",
-     "url_hash unique index across all previous scans; 30-day age window",
-     "Canonicalises the URL (strips utm/fbclid/oc, sorts params, drops www and fragments), SHA-256 hashes it, drops duplicates and stale items",
-     "—",
-     "source_items rows; only genuinely new items continue"),
-
-    ("9. Show extractor<br/>Gemini Task 1",
-     "Any artist with unprocessed items; one call per artist, plus one for sweep items",
-     "Artist names with aliases, plus up to 25 unprocessed items",
-     "Appendix B JSON schema; today's date; full artist list for sweep items",
-     "Structured JSON output validated with Zod, one retry on invalid output; reports near misses honestly instead of dropping them",
-     "Gemini Flash — <b>extract</b>",
-     "Show candidates with evidence quotes and a source URL"),
-
-    ("10. Triage and matcher<br/>Rules in code",
-     "Immediately after extraction",
-     "Show candidates",
-     "Keep rules: is_show_announcement, country = India, confidence ≥ 0.7, date today or later",
-     "Builds dedup_key = artist_id | normalised city | event_date, normalising Bangalore, Gurgaon, Bombay and New Delhi; refuses invalid calendar dates",
-     "—",
-     "Accepted candidates, or a typed rejection reason"),
-
-    ("11. Rejection log",
-     "Whenever triage refuses a candidate",
-     "The refused candidate and its reason",
-     "Six reasons: not a show, not India, low confidence, past event, no city, unknown artist",
-     "Stores the claimed artist, country, city, confidence, evidence quote and source URL",
-     "—",
-     "rejections rows, shown on /filtered and filterable by reason"),
-
-    ("12. Reconciler<br/>Gemini Task 2",
-     "A candidate whose dedup_key already exists",
-     "The stored show and the new candidate",
-     "A null from the model means unreported, never cleared",
-     "Decides same_show, lists changed fields and the single material change; merges only fields the candidate actually states",
-     "Gemini Flash — <b>reconcile</b>",
-     "Updated show row; a material-change flag when it is worth an alert"),
-
-    ("13. Prioritiser<br/>Rules in code",
-     "Every new show and every material change",
-     "City, confidence, early-bird status and deadline",
-     "P0 Bengaluru with early bird open or imminent; P1 Bengaluru or a deadline within 72 h; P2 elsewhere in India; P3 confidence below 0.8",
-     "Deterministic. The model never sets priority — it only explains it",
-     "—",
-     "A priority of P0 to P3 stored on the show"),
-
-    ("14. Alert writer<br/>Gemini Task 3",
-     "Every new show, material change and early-bird reminder",
-     "The show, home city, the priority already decided, and the tag",
-     "Telegram HTML only; 600-character budget measured on visible text, not markup",
-     "Writes headline, message, action_by and the reason for the priority; a P3 never reaches this step",
-     "Gemini Flash — <b>alert</b>",
-     "Alert text ready to send"),
-
-    ("15. Notifier<br/>Telegram Bot API, Resend",
-     "After the alert is written",
-     "Alert HTML and the chat ID or email address",
-     "alert_key = show_id | alert_type | channel | change_ref, unique in Postgres",
-     "The row is claimed BEFORE sending, so the unique constraint is the lock: two overlapping scans cannot both send. Email is claimed separately",
-     "—",
-     "Telegram message, optional email, and an alerts row with delivery status"),
-
-    ("16. Early-bird reminder",
-     "Every scan",
-     "Shows whose early-bird deadline falls within 24 h",
-     "Only while the status is still 'open'; the deadline itself is the change_ref",
-     "Finds due shows and routes them through the alert writer; a moved deadline may alert again, an unchanged one cannot",
-     "Gemini Flash — <b>alert</b>",
-     "One reminder per deadline"),
-
-    ("17. Artist suggestions<br/>Gemini",
-     "Admin presses Suggest artists",
-     "Every followed artist, starred ones weighted first",
-     "Spotify's own recommendations API is closed to apps created after Nov 2024, so this uses the same model as the pipeline",
-     "Suggests similar artists likely to play India, excluding anyone already followed; images looked up in the Spotify catalogue",
-     "Gemini Flash — <b>suggest</b>",
-     "artist_suggestions rows with Add and Dismiss actions"),
-
-    ("18. Database<br/>Postgres on Neon",
-     "Every stage",
-     "Reads and writes from the whole pipeline",
-     "Drizzle ORM with SQL migrations; all timestamps stored in UTC",
-     "Tables: users, artists, scan_runs, source_items, shows, alerts, ai_calls, artist_suggestions, rejections. Uniqueness enforced on url_hash, dedup_key and alert_key",
-     "—",
-     "The single source of truth for every page"),
-
-    ("19. Web app<br/>Next.js pages",
-     "A request from the browser",
-     "Query parameters for city, priority, month and reason",
-     "Every page renders live rows; times displayed in Asia/Kolkata",
-     "Dashboard, calendar, artists, filtered-out, alerts, scan log and how-it-works, all read from Postgres on each request",
-     "—",
-     "The rendered interface"),
-
-    ("20. Access control",
-     "Any page request; any admin action",
-     "Admin password, or a bearer token for the schedulers",
-     "Session cookie stores a hash of the password, never the password",
-     "Middleware gates every page and redirects to /admin; /api/scan keeps its own bearer check so a scheduler fails loudly instead of following a redirect",
-     "—",
-     "An admin session, or a redirect to sign in"),
+    (("Schedulers", "GitHub Actions + Vercel Cron"), 54, [
+        (PLAIN, "Every 30 minutes", "daily cron as backup"),
+        None,
+        (PLAIN, "CRON_SECRET", "repo + Vercel secret"),
+        (SYSTEM, "POST /api/scan", "bearer token, fails on non-2xx"),
+        None,
+        (OUTPUT, "Scan run opened", "scan_runs row"),
+    ]),
+    (("Sources", "Google News - Tavily - Gemini"), 64, [
+        (PLAIN, "Scan opens", None),
+        (PLAIN, "15 due artists", "names + aliases, starred first"),
+        (PLAIN, "14-day window", "5 Indian ticketing sites; 6 h sweep gap"),
+        (SYSTEM, "Fetch in parallel", "concurrency 5, 10 s timeout each"),
+        (AI, "Grounded search", "optional, starred only"),
+        (OUTPUT, "Normalised items", "{source, url, title, snippet, date}"),
+    ]),
+    (("Filter", "Deduplication"), 54, [
+        (PLAIN, "Items fetched", None),
+        (PLAIN, "All items this scan", None),
+        (PLAIN, "url_hash index", "all previous scans; 30-day limit"),
+        (SYSTEM, "Canonicalise + SHA-256", "drop duplicates and stale items"),
+        None,
+        (OUTPUT, "source_items", "only genuinely new items continue"),
+    ]),
+    (("Show extractor", "Gemini Task 1"), 64, [
+        (PLAIN, "Unprocessed items", None),
+        (PLAIN, "Artist + aliases", "up to 25 items per call"),
+        (PLAIN, "Appendix B schema", "today's date; full artist list"),
+        (SYSTEM, "Structured output", "Zod validated, one retry"),
+        (AI, "Extract candidates", "reports near misses honestly"),
+        (OUTPUT, "Show candidates", "with evidence quote + source URL"),
+    ]),
+    (("Triage + matcher", "Rules in code"), 68, [
+        (PLAIN, "After extraction", None),
+        (PLAIN, "Show candidates", None),
+        (PLAIN, "Keep rules", "India, confidence 0.7+, upcoming"),
+        (SYSTEM, "Build dedup_key", "artist | city | date"),
+        None,
+        (OUTPUT, "Accepted", "new show, or an existing match"),
+    ]),
+    (("Rejection log", "What it refused"), 54, [
+        (PLAIN, "A candidate fails", None),
+        (PLAIN, "Candidate + reason", None),
+        (PLAIN, "Six reasons", "not India, tribute, namesake, past"),
+        (SYSTEM, "Store the evidence", "quote it was judged on"),
+        None,
+        (REJECT, "rejections", "shown on /filtered, never alerted"),
+    ]),
+    (("Reconciler", "Gemini Task 2"), 58, [
+        (PLAIN, "dedup_key exists", None),
+        (PLAIN, "Stored show + candidate", None),
+        (PLAIN, "Null means unreported", "never cleared"),
+        (SYSTEM, "Merge stated fields", None),
+        (AI, "Same show? changed?", "one material change"),
+        (OUTPUT, "Show updated", "flagged when worth an alert"),
+    ]),
+    (("Prioritiser + writer", "Rules in code + Gemini Task 3"), 68, [
+        (PLAIN, "New show or change", None),
+        (PLAIN, "City, confidence, early bird", None),
+        (PLAIN, "P0 Bengaluru + early bird", "P1 / P2 / P3 by rule"),
+        (SYSTEM, "Priority set in code", "the model never sets it"),
+        (AI, "Write the alert", "600 visible chars, explains priority"),
+        (OUTPUT, "Alert ready", "P3 stops here: dashboard only"),
+    ]),
+    (("Notifier", "Telegram Bot API - Resend"), 58, [
+        (PLAIN, "Alert written", None),
+        (PLAIN, "Message + chat ID", None),
+        (PLAIN, "alert_key unique", "show | type | channel | change"),
+        (SYSTEM, "Claim row, then send", "the lock is the constraint"),
+        None,
+        (OUTPUT, "Karan is alerted", "alerts row with delivery status"),
+    ]),
+    (("Karan", "Bengaluru"), 48, [
+        (PLAIN, "Phone buzzes", None),
+        (PLAIN, "[BUY TODAY] ...", None),
+        None,
+        (HUMAN, "Reads and decides", "ticket link in the message"),
+        None,
+        (HUMAN, "Buys the early bird", "before the window closes"),
+    ]),
+    (("Database + dashboard", "Neon Postgres - Next.js"), 54, [
+        (PLAIN, "Every stage / a visit", None),
+        (PLAIN, "Nine tables", None),
+        (PLAIN, "UTC stored", "Asia/Kolkata displayed"),
+        (SYSTEM, "Read live on request", None),
+        None,
+        (OUTPUT, "Dashboard, calendar, logs", "shows, alerts, scans, filtered"),
+    ]),
 ]
 
+TITLE_H = 44
+HEAD_H = 22
+DEPLOY_H = 44
+LEGEND_H = 18
 
-def para(text, style=cell):
-    return Paragraph(text, style)
+body_h = sum(r[1] for r in ROWS)
+top = H - M
 
+# ---- title -------------------------------------------------------------
+c.setFillColor(INK)
+c.setFont("Helvetica-Bold", 19)
+c.drawString(M, top - 15, "Live Show Radar")
+c.setFont("Helvetica", 19)
+c.drawString(M + stringWidth("Live Show Radar", "Helvetica-Bold", 19) + 7, top - 15,
+             "·  Components map")
+c.setFillColor(MUTED)
+c.setFont("Helvetica", 7.8)
+c.drawString(M, top - 29,
+             "Concert and festival alerts for India. Every AI step runs on Google Gemini Flash "
+             "through the official @google/genai SDK; no other model is used anywhere.")
+c.setFont("Helvetica-Bold", 8)
+c.setFillColor(colors.HexColor("#c2410c"))
+c.drawRightString(W - M, top - 15, "live-show-radar-pink.vercel.app")
+c.setFont("Helvetica", 7.2)
+c.setFillColor(MUTED)
+c.drawRightString(W - M, top - 28, "5 Gemini tasks  -  20 components  -  141 tests")
 
-def build():
-    doc = SimpleDocTemplate(
-        OUT, pagesize=landscape(A3),
-        leftMargin=11 * mm, rightMargin=11 * mm,
-        topMargin=9 * mm, bottomMargin=9 * mm,
-        title="Live Show Radar — Components Map",
-        author="Live Show Radar",
-    )
+y = top - TITLE_H
 
-    story = [
-        para("Live Show Radar — Components Map", title),
-        para(
-            "An AI-powered live-show alert system for one user in Bengaluru. It monitors concert "
-            "and festival announcements across India for every artist he follows and alerts him "
-            "when one appears, with early-bird ticket windows called out first. "
-            "Every AI step runs on Google Gemini Flash through the official @google/genai SDK; no "
-            "other model is used anywhere. Live at live-show-radar-pink.vercel.app",
-            sub),
-        Spacer(1, 7),
-    ]
+# ---- column headers ----------------------------------------------------
+c.setFillColor(HEADBG)
+c.roundRect(M, y - HEAD_H, AVAIL, HEAD_H, 3, fill=1, stroke=0)
+c.setFillColor(colors.white)
+c.setFont("Helvetica-Bold", 8.4)
+for i, name in enumerate(COLS):
+    c.drawCentredString(CX[i] + CW[i] / 2, y - HEAD_H + 7.4, name)
+y -= HEAD_H
 
-    data = [[para(c, head) for c in COLS]]
-    for row in ROWS:
-        actor, trigger, inp, ctx, proc, ai, out = row
-        data.append([
-            para(actor, cell_b),
-            para(trigger),
-            para(inp),
-            para(ctx),
-            para(proc),
-            para(ai, cell_ai if ai != "—" else cell),
-            para(out),
-        ])
+# ---- rows --------------------------------------------------------------
+for idx, ((actor, actor_sub), rh, cells) in enumerate(ROWS):
+    ytop = y
+    ybot = y - rh
 
-    widths = [46, 46, 54, 62, 78, 34, 50]
-    total = sum(widths)
-    avail = landscape(A3)[0] - 22 * mm
-    widths = [w / total * avail for w in widths]
+    c.setFillColor(BANDA if idx % 2 == 0 else BANDB)
+    c.rect(M, ybot, AVAIL, rh, fill=1, stroke=0)
+    c.setStrokeColor(GRID)
+    c.setLineWidth(0.4)
+    c.line(M, ybot, M + AVAIL, ybot)
 
-    table = Table(data, colWidths=widths, repeatRows=1)
-    style = [
-        ("BACKGROUND", (0, 0), (-1, 0), HEAD),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("GRID", (0, 0), (-1, -1), 0.4, LINE),
-        ("LINEBELOW", (0, 0), (-1, 0), 0.8, HEAD),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.6),
-    ]
-    for i in range(1, len(data)):
-        if i % 2 == 0:
-            style.append(("BACKGROUND", (0, i), (-1, i), ZEBRA))
-    table.setStyle(TableStyle(style))
-    story.append(table)
+    # actor cell
+    c.setFillColor(INK)
+    c.setFont("Helvetica-Bold", 8.6)
+    c.drawString(CX[0] + 8, ybot + rh / 2 + 1.5, actor)
+    c.setFillColor(MUTED)
+    c.setFont("Helvetica", 6.8)
+    for j, line in enumerate(wrap(actor_sub, "Helvetica", 6.8, CW[0] - 14)):
+        c.drawString(CX[0] + 8, ybot + rh / 2 - 8 - j * 8, line)
 
-    story.append(Spacer(1, 6))
-    story.append(KeepTogether([
-        para("Notes", h2),
-        para(
-            "<b>Live data only.</b> No show is hard-coded or mocked. The single piece of seeded "
-            "data is the starting artist list; every show on the dashboard was found at runtime.",
-            note),
-        Spacer(1, 2),
-        para(
-            "<b>Division of labour.</b> The model judges language — is this a real show, by this "
-            "artist, in India. Code decides consequences — priority, deduplication, scheduling and "
-            "whether to send. Priority is never set by the model.",
-            note),
-        Spacer(1, 2),
-        para(
-            "<b>Failure is contained.</b> A failure in one source, one artist or one AI call is "
-            "recorded against the scan run and never fails the run. Invalid model output is "
-            "retried once, then logged and skipped.",
-            note),
-        Spacer(1, 2),
-        para(
-            "<b>Observability.</b> Every Gemini call is logged to ai_calls with task, model, "
-            "latency and token counts. Every refused candidate is kept in rejections with the "
-            "quote it was judged on.",
-            note),
-    ]))
+    placed = []
+    for i, cell in enumerate(cells, start=1):
+        if cell is None:
+            placed.append(None)
+            continue
+        palette, ctitle, cbody = cell
+        bw = CW[i] - 16
+        bh = rh - 16
+        bx = CX[i] + 8
+        by = ybot + 8
+        box(bx, by, bw, bh, palette, ctitle, cbody)
+        placed.append((bx, by, bw, bh))
 
-    doc.build(story)
-    print("wrote", OUT)
+    # horizontal arrows between consecutive filled cells
+    for i in range(len(placed) - 1):
+        a, b = placed[i], placed[i + 1]
+        if not a or not b:
+            continue
+        ax = a[0] + a[2]
+        bx = b[0]
+        if bx - ax < 3:
+            continue
+        arrow(ax + 1.5, a[1] + a[3] / 2, bx - 2, b[1] + b[3] / 2)
 
+    y = ybot
 
-build()
+# ---- deployment strip --------------------------------------------------
+dy = y - 8
+c.setFillColor(colors.HexColor("#f2f5fa"))
+c.setStrokeColor(GRID)
+c.setLineWidth(0.6)
+c.roundRect(M, dy - DEPLOY_H, AVAIL, DEPLOY_H, 4, fill=1, stroke=1)
+c.setFillColor(INK)
+c.setFont("Helvetica-Bold", 8.4)
+c.drawString(M + 12, dy - 18, "Deployment and scheduling")
+c.setFillColor(MUTED)
+c.setFont("Helvetica", 6.8)
+c.drawString(M + 12, dy - 29, "code to production")
+
+chain = [
+    (SYSTEM, "GitHub", "repository + Actions cron"),
+    (SYSTEM, "Vercel", "Next.js 16, 300 s ceiling"),
+    (SYSTEM, "Neon Postgres", "Drizzle migrations"),
+    (OUTPUT, "Live app", "scans every 30 min"),
+]
+cw = 150
+gap = 34
+startx = M + 150
+for i, (pal, t, b) in enumerate(chain):
+    bx = startx + i * (cw + gap)
+    box(bx, dy - DEPLOY_H + 7, cw, DEPLOY_H - 14, pal, t, b)
+    if i:
+        arrow(bx - gap + 2, dy - DEPLOY_H / 2, bx - 3, dy - DEPLOY_H / 2)
+
+# ---- legend ------------------------------------------------------------
+ly = dy - DEPLOY_H - 15
+items = [(AI, "AI component"), (SYSTEM, "System step"), (OUTPUT, "Output"),
+         (HUMAN, "Human step"), (REJECT, "Refused / not alerted"), (PLAIN, "Context")]
+lx = M
+for (fill, stroke), label in items:
+    c.setFillColor(fill)
+    c.setStrokeColor(stroke)
+    c.setLineWidth(0.7)
+    c.roundRect(lx, ly - 7, 15, 9, 2, fill=1, stroke=1)
+    c.setFillColor(MUTED)
+    c.setFont("Helvetica", 7)
+    c.drawString(lx + 20, ly - 5, f"= {label}")
+    lx += 20 + stringWidth(f"= {label}", "Helvetica", 7) + 22
+
+c.setFillColor(MUTED)
+c.setFont("Helvetica", 7)
+c.drawRightString(W - M, ly - 5,
+                  "Priority is decided in code, never by the model. The model judges language; "
+                  "code decides consequences.")
+
+c.showPage()
+c.save()
+print("wrote", OUT)
