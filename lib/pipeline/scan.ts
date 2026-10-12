@@ -9,6 +9,7 @@ import {
   buildPriorityArtistQuery,
   searchTavily,
 } from '@/lib/sources/tavily';
+import { isGroundingEnabled, searchWithGrounding } from '@/lib/sources/gemini-grounding';
 import type { NormalisedItem, SourceError } from '@/lib/sources/types';
 import {
   markArtistsChecked,
@@ -44,6 +45,7 @@ export type ScanSummary = {
   artistNames: string[];
   sweepRan: boolean;
   priorityArtistChecks: number;
+  groundingCalls: number;
   spotifySync: { ran: boolean; fetched?: number; added?: number; error?: string };
   itemsFetched: number;
   itemsNew: number;
@@ -59,7 +61,8 @@ export type ScanSummary = {
 type FetchJob =
   | { kind: 'google_news'; term: string; artist: BatchArtist }
   | { kind: 'tavily_artist'; artist: BatchArtist }
-  | { kind: 'tavily_sweep'; query: string };
+  | { kind: 'tavily_sweep'; query: string }
+  | { kind: 'gemini_grounding'; artist: BatchArtist };
 
 function buildJobs(batch: readonly BatchArtist[], priority: readonly BatchArtist[], sweep: boolean) {
   const jobs: FetchJob[] = [];
@@ -73,6 +76,14 @@ function buildJobs(batch: readonly BatchArtist[], priority: readonly BatchArtist
 
   for (const artist of priority) jobs.push({ kind: 'tavily_artist', artist });
 
+  // Source E, off unless ENABLE_GEMINI_GROUNDING is set: a third look for
+  // starred artists only, since grounding is the most expensive source.
+  if (isGroundingEnabled()) {
+    for (const artist of priority) {
+      if (artist.isStarred) jobs.push({ kind: 'gemini_grounding', artist });
+    }
+  }
+
   if (sweep) {
     for (const query of SWEEP_QUERIES) jobs.push({ kind: 'tavily_sweep', query });
   }
@@ -80,7 +91,7 @@ function buildJobs(batch: readonly BatchArtist[], priority: readonly BatchArtist
   return jobs;
 }
 
-async function runJob(job: FetchJob) {
+async function runJob(job: FetchJob, scanRunId: string) {
   switch (job.kind) {
     case 'google_news':
       return fetchGoogleNews(job.term, job.artist.id, FETCH_TIMEOUT_MS);
@@ -89,6 +100,8 @@ async function runJob(job: FetchJob) {
         artistId: job.artist.id,
         timeoutMs: FETCH_TIMEOUT_MS,
       });
+    case 'gemini_grounding':
+      return searchWithGrounding(job.artist.name, job.artist.id, { scanRunId });
     case 'tavily_sweep':
       // Sweeps are not tied to one artist; they are scoped to ticketing sites.
       return searchTavily(job.query, {
@@ -157,7 +170,9 @@ export async function runScan(
     const jobs = buildJobs(batch, priorityArtists, sweepDue);
     sweepRan = sweepDue && jobs.some((job) => job.kind === 'tavily_sweep');
 
-    const settled = await mapWithConcurrency(jobs, FETCH_CONCURRENCY, runJob);
+    const settled = await mapWithConcurrency(jobs, FETCH_CONCURRENCY, (job) =>
+      runJob(job, run.id),
+    );
 
     const collected: NormalisedItem[] = [];
     settled.forEach((result, index) => {
@@ -168,7 +183,12 @@ export async function runScan(
       } else {
         // mapWithConcurrency already isolates throws; this is belt and braces.
         errors.push({
-          source: job.kind === 'google_news' ? 'google_news' : 'tavily',
+          source:
+            job.kind === 'google_news'
+              ? 'google_news'
+              : job.kind === 'gemini_grounding'
+                ? 'gemini_search'
+                : 'tavily',
           query: job.kind === 'google_news' ? job.term : 'sweep',
           message: errorMessage(result.reason),
         });
@@ -282,6 +302,9 @@ export async function runScan(
     artistNames: batch.map((artist) => artist.name),
     sweepRan,
     priorityArtistChecks: priorityArtists.length,
+    groundingCalls: isGroundingEnabled()
+      ? priorityArtists.filter((artist) => artist.isStarred).length
+      : 0,
     spotifySync,
     itemsFetched,
     itemsNew,

@@ -59,6 +59,13 @@ const AI_TASKS = [
     file: 'lib/ai/suggest.ts',
   },
   {
+    task: 'ground',
+    title: 'Ground — Gemini search as a third source',
+    input: 'A starred artist, when ENABLE_GEMINI_GROUNDING is on.',
+    output: 'The URLs the model grounded on, fed back through Task 1 like any other source.',
+    file: 'lib/sources/gemini-grounding.ts',
+  },
+  {
     task: 'alert',
     title: 'Task 3 — Prioritise and write the alert',
     input: 'The show, the home city, and the priority already decided by the rules.',
@@ -165,8 +172,11 @@ export default async function HowItWorksPage() {
           <div className="panel p-5 text-sm">
             <h3 className="font-semibold">Gemini grounding</h3>
             <p className="mt-1 leading-relaxed text-[var(--muted)]">
-              An optional third source for starred artists, behind{' '}
-              <code className="text-white">ENABLE_GEMINI_GROUNDING</code>. Currently{' '}
+              A third source for starred artists using the <code className="text-white">google_search</code>{' '}
+              tool, behind <code className="text-white">ENABLE_GEMINI_GROUNDING</code>. Grounding
+              cannot be combined with structured output, so it is used for discovery only: the
+              URLs it finds go through Task 1 like any other source, and nothing the model says
+              is trusted directly. Currently{' '}
               <span className={ENABLE_GEMINI_GROUNDING() ? 'text-emerald-300' : 'text-zinc-300'}>
                 {ENABLE_GEMINI_GROUNDING() ? 'on' : 'off'}
               </span>

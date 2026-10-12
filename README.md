@@ -100,7 +100,7 @@ typed into the import box.
 | **Google News RSS** | none | One query per artist and per alias against the India feed (`hl=en-IN&gl=IN&ceid=IN:en`), windowed to 14 days with `when:14d`. Catches press coverage. |
 | **Tavily Search** | `TAVILY_API_KEY` | `search_depth: basic`, `include_answer: false`, country India. Platform sweeps at most every 6 h across District, BookMyShow, Skillbox, SortMyScene and HighApe — each verified to return indexed results. Starred artists get one query a day, capped at 10. |
 | **Spotify Web API** | client ID + secret | Authorization Code flow, scope `user-follow-read`, cursor-paginated. Optional. |
-| **Gemini grounding** | — | Optional third source for starred artists behind `ENABLE_GEMINI_GROUNDING`. Paid tier only, off by default. |
+| **Gemini grounding** | `GEMINI_API_KEY` | Third source for starred artists using the `google_search` tool, behind `ENABLE_GEMINI_GROUNDING`. Grounding cannot be combined with structured output, so it is used for discovery only — the URLs it grounds on are stored as `gemini_search` items and extracted by Task 1 like any other source. Off by default; it needs a paid tier. |
 
 Google News `<description>` only repeats the headline, so RSS items give the model a title and a
 publisher; Tavily items carry real page content.
@@ -119,6 +119,7 @@ latency and token counts. Generation settings are left at the model's defaults.
 | **2 Reconcile** | A stored show + a candidate sharing its `dedup_key` | `same_show`, changed fields, the single material change | `lib/ai/reconcile.ts` |
 | **3 Alert** | The show, home city, and the priority already decided | headline, Telegram HTML message, `action_by`, reason | `lib/ai/alert.ts` |
 | **Suggest** | Every followed artist, starred ones weighted first | Similar artists likely to play India, each with the artist it resembles | `lib/ai/suggest.ts` |
+| **Ground** | A starred artist, when `ENABLE_GEMINI_GROUNDING=true` | URLs found with the `google_search` tool, fed back through Task 1 | `lib/sources/gemini-grounding.ts` |
 
 **Priority is decided in code, never by the model** (`lib/pipeline/priority.ts`). Gemini only
 explains it.
@@ -228,6 +229,13 @@ values. Nothing in this repo logs or prints a secret, and Spotify tokens never l
   budget on the link alone while the message a reader sees stays near 250 characters.
 - **Month-precision dates** are stored as the first of the month with `date_precision = 'month'`
   and displayed as "December 2026". A show with no date at all displays "TBA".
+- **Rejections are kept, not just counted.** Every candidate the pipeline refuses is stored in
+  `rejections` with the reason and the quote it was judged on, and shown under "Filtered out" on
+  `/scans`. This is where the AI earns its place: an ABBA tribute night in Pune and a Gorillaz
+  concert review from Cleveland are both refused, for different reasons.
+- **Email is a second channel, off unless configured.** Set `RESEND_API_KEY` and `ALERT_EMAIL`
+  and each alert is also emailed, claimed under its own `alert_key` so an email failure can
+  never suppress or duplicate the Telegram one.
 - **One user.** The schema supports many, but the scan and the alert path both assume a single
   user row.
 - **There is no public view.** `middleware.ts` gates every page on the admin session, so a

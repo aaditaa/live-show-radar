@@ -3,6 +3,7 @@ import { alerts, artists, shows, type Show, type User } from '@/db/schema';
 import { db } from '@/lib/db';
 import { writeAlert } from '@/lib/ai/alert';
 import { sendTelegramMessage } from '@/lib/notify/telegram';
+import { isEmailConfigured, sendAlertEmail } from '@/lib/notify/email';
 import { shouldPush, type Priority } from '@/lib/pipeline/priority';
 import type { SourceError } from '@/lib/sources/types';
 
@@ -49,8 +50,9 @@ export type AlertOutcome = {
 async function claimAlert(
   request: AlertRequest,
   user: User,
+  channel: 'telegram' | 'email' = 'telegram',
 ): Promise<{ id: string } | null> {
-  const alertKey = buildAlertKey(request.show.id, request.alertType, 'telegram', request.changeRef);
+  const alertKey = buildAlertKey(request.show.id, request.alertType, channel, request.changeRef);
 
   const claimed = await db
     .insert(alerts)
@@ -58,7 +60,7 @@ async function claimAlert(
       showId: request.show.id,
       userId: user.id,
       alertType: request.alertType,
-      channel: 'telegram',
+      channel,
       alertKey,
       message: '',
       deliveryStatus: 'pending',
@@ -147,6 +149,43 @@ export async function deliverAlerts(
         query: `telegram: ${request.artistName}`,
         message: send.error,
       });
+    }
+
+    // Optional second channel. Claimed separately, so an email failure can
+    // never suppress or duplicate the Telegram alert.
+    if (isEmailConfigured()) {
+      const emailClaim = await claimAlert(request, user, 'email');
+      if (emailClaim) {
+        const subject = written.result.headline || `${request.artistName} — live show`;
+        const sentEmail = await sendAlertEmail(subject, written.result.message);
+        await db
+          .update(alerts)
+          .set(
+            sentEmail.ok
+              ? {
+                  message: written.result.message,
+                  deliveryStatus: 'sent',
+                  sentAt: new Date(),
+                  error: null,
+                }
+              : {
+                  message: written.result.message,
+                  deliveryStatus: 'failed',
+                  error: sentEmail.error,
+                },
+          )
+          .where(eq(alerts.id, emailClaim.id));
+
+        if (sentEmail.ok) outcome.sent += 1;
+        else {
+          outcome.failed += 1;
+          outcome.errors.push({
+            source: 'tavily',
+            query: `email: ${request.artistName}`,
+            message: sentEmail.error,
+          });
+        }
+      }
     }
   }
 

@@ -174,3 +174,25 @@ describe('triageCandidates', () => {
     expect(accepted).toHaveLength(1);
   });
 });
+
+describe('triage records why, not just that', () => {
+  it('names a distinct reason for each way a candidate can fail', () => {
+    const reasons = [
+      candidate({ is_show_announcement: false }),
+      candidate({ country: 'United States' }),
+      candidate({ artist_match_confidence: 0.4 }),
+      candidate({ event_date: '2020-01-01' }),
+      candidate({ city: null }),
+      candidate({ artist_name: 'Philadelphia Eagles' }),
+    ].map((c) => triageCandidates([c], resolve, NOW).rejected[0]?.reason);
+
+    expect(reasons).toEqual([
+      'not_a_show_announcement',
+      'not_india',
+      'low_confidence',
+      'past_event',
+      'no_city',
+      'unknown_artist',
+    ]);
+  });
+});

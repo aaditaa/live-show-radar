@@ -202,7 +202,7 @@ export const aiCalls = pgTable(
     createdAt: timestamp('created_at', tz).notNull().defaultNow(),
   },
   (t) => [
-    check('ai_calls_task_check', sql`${t.task} in ('extract','reconcile','alert','suggest')`),
+    check('ai_calls_task_check', sql`${t.task} in ('extract','reconcile','alert','suggest','ground')`),
   ],
 );
 
@@ -232,6 +232,39 @@ export const artistSuggestions = pgTable(
 );
 
 export type ArtistSuggestion = typeof artistSuggestions.$inferSelect;
+
+/**
+ * Candidates Gemini returned that the pipeline refused, with the reason.
+ * Rejection is the hard part of this app, so it is recorded rather than
+ * counted and discarded.
+ */
+export const rejections = pgTable(
+  'rejections',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    scanRunId: uuid('scan_run_id').references(() => scanRuns.id),
+    artistId: uuid('artist_id').references(() => artists.id, { onDelete: 'set null' }),
+    /** The name Gemini matched, which may not be an artist we follow. */
+    claimedArtist: text('claimed_artist').notNull(),
+    reason: text('reason').notNull(),
+    country: text('country'),
+    city: text('city'),
+    eventDate: text('event_date'),
+    confidence: numeric('confidence', { precision: 3, scale: 2 }),
+    evidence: text('evidence'),
+    sourceUrl: text('source_url'),
+    createdAt: timestamp('created_at', tz).notNull().defaultNow(),
+  },
+  (t) => [
+    check(
+      'rejections_reason_check',
+      sql`${t.reason} in ('not_a_show_announcement','not_india','low_confidence','past_event','no_city','unknown_artist')`,
+    ),
+    index('rejections_created_idx').on(t.createdAt),
+  ],
+);
+
+export type Rejection = typeof rejections.$inferSelect;
 
 export type User = typeof users.$inferSelect;
 export type Artist = typeof artists.$inferSelect;

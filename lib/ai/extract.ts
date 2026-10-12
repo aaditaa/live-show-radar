@@ -15,14 +15,24 @@ INCLUDE:
 - Concrete live performances in India by the given artist.
 - A festival lineup that includes the artist: set is_festival true and festival_name.
 
-EXCLUDE (return nothing for these):
-- Past-show recaps and reviews.
-- Tribute acts, cover bands, and DJs playing the artist's music. A "Beatles tribute night" is not The Beatles.
-- Film screenings, listening parties, and album releases.
-- Rumours with no date and no city.
-- Shows outside India. A London or Los Angeles date is not an India show.
-- Unrelated namesakes. "Queen" may be the British monarchy or a cricket headline; "Eagles" may be the American football team; a person's name may belong to someone other than the musician. If the item is not about the musician, do not return it.
-- A different artist who merely appears in the same article. Only return a show if the given artist is performing.
+REPORT, DO NOT SILENTLY DROP:
+Return a candidate for any item that plausibly concerns one of these artists performing live,
+including ones that should not qualify, and mark them honestly. The caller filters on your
+fields, so an accurate "no" is as useful as a "yes":
+- A show outside India: set country to the real country, e.g. "United States".
+- A past show, recap or review: set is_show_announcement false.
+- A tribute act, cover band, or a DJ playing the artist's music: is_show_announcement false. A
+  "Beatles tribute night" is not The Beatles.
+- A film screening, listening party or album release: is_show_announcement false.
+- A rumour with no date and no city: is_show_announcement false.
+- An unrelated namesake: "Queen" may be the British monarchy or a cricket headline, "Eagles" may
+  be the American football team. Set artist_match_confidence below 0.3 and say which artist the
+  item names in artist_name.
+- A different artist who merely appears in the same article: return it under that artist's name
+  with a low artist_match_confidence, rather than attributing their show to the artist asked for.
+
+Omit only items with no connection to live music by anyone — a fuel surcharge story, a hotel
+listing. Those are noise, not decisions.
 
 RULES:
 - Every field must be supported by the item text. If the text does not say it, the field is null. Never invent prices, dates, venues, ticket links or platforms.
@@ -32,7 +42,7 @@ RULES:
 - Dates are ISO. Use YYYY-MM-DD with date_precision "day". If only the month is known, use the first of that month with date_precision "month".
 - early_bird_status: "open" when early-bird or pre-sale tickets are on sale now; "imminent" when the text says early-bird or pre-sale opens at a future time; "sold_out", "closed", or "not_mentioned" otherwise. Capture any deadline or limited-quantity wording in early_bird_note, e.g. "first 200 passes only".
 - evidence is a short direct quote from the item that supports the show. source_url is the url of the item the show came from.
-- Return {"shows": []} when nothing qualifies. An empty answer is correct and expected for artists who are not touring.`;
+- Return {"shows": []} only when no item relates to live music at all. For an artist who is not touring India, returning the foreign or past shows you did find, correctly marked, is the right answer.`;
 
 export type ExtractInputArtist = { name: string; aliases: string[] };
 

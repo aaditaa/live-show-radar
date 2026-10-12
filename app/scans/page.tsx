@@ -1,7 +1,8 @@
 import { desc, sql } from 'drizzle-orm';
-import { aiCalls, scanRuns } from '@/db/schema';
+import { aiCalls, rejections, scanRuns } from '@/db/schema';
 import { db } from '@/lib/db';
 import { Flash } from '@/components/flash';
+import { RejectionList } from '@/components/rejection-list';
 import { PageHeader } from '@/components/page-header';
 import { formatIstDateTime, formatRelative } from '@/lib/time';
 
@@ -31,7 +32,7 @@ export default async function ScansPage({
 }) {
   const params = await searchParams;
 
-  const [runs, aiByRun] = await Promise.all([
+  const [runs, aiByRun, filteredOut] = await Promise.all([
     db.select().from(scanRuns).orderBy(desc(scanRuns.startedAt)).limit(40),
     db
       .select({
@@ -43,6 +44,7 @@ export default async function ScansPage({
       })
       .from(aiCalls)
       .groupBy(aiCalls.scanRunId),
+    db.select().from(rejections).orderBy(desc(rejections.createdAt)).limit(14),
   ]);
 
   const aiStats = new Map(aiByRun.map((row) => [row.scanRunId, row]));
@@ -63,6 +65,18 @@ export default async function ScansPage({
         subtitle={`Last ${runs.length} scans · ${totals.items} new items · ${totals.shows} new shows · ${totals.alerts} alerts sent. A scan runs every 30 minutes from GitHub Actions, with a daily Vercel cron at 08:00 IST as backup.`}
       />
       <Flash done={params.done} error={params.error} />
+
+      <section className="mt-7">
+        <h2 className="text-[15px] font-semibold">Filtered out</h2>
+        <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">
+          Candidates Gemini returned that the pipeline refused, with the quote it was judged on.
+          Separating a real India show from a tribute act, a foreign tour date or a namesake is
+          the part that actually needs the model.
+        </p>
+        <RejectionList rows={filteredOut} />
+      </section>
+
+      <h2 className="mt-9 text-[15px] font-semibold">Scan history</h2>
 
       {runs.length === 0 ? (
         <p className="mt-6 rounded-2xl border border-dashed border-[var(--line)] px-5 py-8 text-sm text-[var(--muted)]">

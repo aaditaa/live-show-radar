@@ -1,5 +1,5 @@
 import { and, desc, inArray, isNull, or } from 'drizzle-orm';
-import { sourceItems, type Show, type SourceItem } from '@/db/schema';
+import { rejections, sourceItems, type Show, type SourceItem } from '@/db/schema';
 import { db } from '@/lib/db';
 import { mapWithConcurrency } from '@/lib/http';
 import { extractShows, type ExtractInputArtist } from '@/lib/ai/extract';
@@ -182,6 +182,28 @@ export async function runExtractStage(
 
   const { accepted, rejected } = triageCandidates(candidates, resolveArtistId, now);
   for (const rejection of rejected) result.rejections[rejection.reason] += 1;
+
+  // Keep what was refused and why. Rejection is the hard part of this
+  // pipeline, so it is evidence, not a statistic.
+  if (rejected.length > 0) {
+    await db
+      .insert(rejections)
+      .values(
+        rejected.slice(0, 60).map(({ candidate, reason }) => ({
+          scanRunId: options.scanRunId,
+          artistId: resolveArtistId(candidate.artist_name),
+          claimedArtist: candidate.artist_name,
+          reason,
+          country: candidate.country,
+          city: candidate.city,
+          eventDate: candidate.event_date,
+          confidence: String(candidate.artist_match_confidence),
+          evidence: candidate.evidence,
+          sourceUrl: candidate.source_url,
+        })),
+      )
+      .catch(() => undefined);
+  }
 
   const existing = await findExistingShows(accepted.map((item) => item.dedupKey));
   const fresh = accepted.filter((item) => !existing.has(item.dedupKey));

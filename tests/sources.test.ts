@@ -130,3 +130,15 @@ describe('priority Tavily checks', () => {
     ).toEqual([]);
   });
 });
+
+describe('gemini grounding (source E)', () => {
+  it('builds a prompt that asks only about India and ticket windows', async () => {
+    const { buildGroundingPrompt } = await import('../lib/sources/gemini-grounding');
+    const prompt = buildGroundingPrompt('Lifafa');
+    expect(prompt).toContain('Lifafa');
+    expect(prompt).toContain('India');
+    expect(prompt).toContain('early-bird');
+    // It must not invite the model to answer from memory.
+    expect(prompt).toContain('only what the search results actually say');
+  });
+});
