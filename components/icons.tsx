@@ -135,3 +135,11 @@ export function IconLock({ className = '' }: IconProps) {
     </svg>
   );
 }
+
+export function IconFilter({ className = '' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={`${base} ${className}`}>
+      <path d="M4 5h16l-6.2 7.3V19l-3.6-2v-4.7Z" strokeLinejoin="round" />
+    </svg>
+  );
+}

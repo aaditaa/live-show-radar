@@ -86,6 +86,7 @@ scan's `errors` column and never fails the run.
 | 10 | Notifier | Telegram Bot API | `lib/notify/telegram.ts` |
 | 11 | Database | Postgres on Neon, Drizzle | `db/schema.ts` |
 | 12 | Dashboard and logs | Next.js pages | `app/page.tsx`, `app/scans`, `app/how-it-works` |
+| 15 | Rejection log | What the pipeline refused, and why | `app/filtered/page.tsx` |
 | 13 | Calendar | Month grid of upcoming shows | `app/calendar/page.tsx` |
 | 14 | Artist suggestions | Gemini, similar-artist discovery | `lib/ai/suggest.ts` |
 
@@ -153,7 +154,8 @@ Use `127.0.0.1`, not `localhost` — Spotify no longer accepts `localhost` as a 
 | `npm run telegram:chat-id` | Print your Telegram chat ID after sending `/start` |
 
 Pages: `/` dashboard, `/calendar` month grid, `/artists` (search, star, remove, suggestions),
-`/alerts`, `/scans`, `/how-it-works`, and `/admin` for the password sign-in. Every page except
+`/filtered` (what the pipeline refused, and why), `/alerts`, `/scans`, `/how-it-works`, and
+`/admin` for the password sign-in. Every page except
 `/admin` requires a signed-in session, enforced in `middleware.ts`.
 
 Trigger a scan locally:
@@ -230,8 +232,8 @@ values. Nothing in this repo logs or prints a secret, and Spotify tokens never l
 - **Month-precision dates** are stored as the first of the month with `date_precision = 'month'`
   and displayed as "December 2026". A show with no date at all displays "TBA".
 - **Rejections are kept, not just counted.** Every candidate the pipeline refuses is stored in
-  `rejections` with the reason and the quote it was judged on, and shown under "Filtered out" on
-  `/scans`. This is where the AI earns its place: an ABBA tribute night in Pune and a Gorillaz
+  `rejections` with the reason and the quote it was judged on, and shown on its own `/filtered`
+  page, filterable by reason. This is where the AI earns its place: an ABBA tribute night in Pune and a Gorillaz
   concert review from Cleveland are both refused, for different reasons.
 - **Email is a second channel, off unless configured.** Set `RESEND_API_KEY` and `ALERT_EMAIL`
   and each alert is also emailed, claimed under its own `alert_key` so an email failure can

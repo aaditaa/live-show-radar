@@ -8,6 +8,7 @@ import {
   IconBook,
   IconCalendar,
   IconDashboard,
+  IconFilter,
   IconLock,
   IconPulse,
 } from '@/components/icons';
@@ -16,6 +17,7 @@ const LINKS = [
   { href: '/', label: 'Dashboard', Icon: IconDashboard },
   { href: '/calendar', label: 'Calendar', Icon: IconCalendar },
   { href: '/artists', label: 'Artists', Icon: IconArtists },
+  { href: '/filtered', label: 'Filtered out', Icon: IconFilter },
   { href: '/alerts', label: 'Alerts', Icon: IconBell },
   { href: '/scans', label: 'Scans', Icon: IconPulse },
   { href: '/how-it-works', label: 'How it works', Icon: IconBook },
