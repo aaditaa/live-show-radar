@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { ShowCard } from '@/components/show-card';
+import { CountUp } from '@/components/count-up';
+import { Sparkline } from '@/components/sparkline';
 import { PageHeader } from '@/components/page-header';
 import { HOME_CITY } from '@/lib/cities';
 import {
@@ -7,6 +9,7 @@ import {
   getDistinctCities,
   getLastScan,
   getNextCheckAt,
+  getRecentScanActivity,
   getUpcomingShows,
   splitByCity,
   type ShowWithArtist,
@@ -18,12 +21,32 @@ export const dynamic = 'force-dynamic';
 const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
 
 /** The top metric strip: label above a large figure, divided by hairlines. */
-function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
+function Metric({
+  label,
+  value,
+  hint,
+  count,
+  index = 0,
+  children,
+}: {
+  label: string;
+  value?: string;
+  hint: string;
+  count?: number;
+  index?: number;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="min-w-[150px] flex-1 px-5 py-4 sm:first:pl-0">
+    <div
+      style={{ ['--i' as string]: index }}
+      className="rise min-w-[150px] flex-1 px-5 py-4 sm:first:pl-0"
+    >
       <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--muted-dim)]">{label}</p>
-      <p className="mt-1 text-xl font-semibold tracking-tight">{value}</p>
+      <p className="mt-1 text-xl font-semibold tracking-tight">
+        {count !== undefined ? <CountUp value={count} /> : value}
+      </p>
       <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">{hint}</p>
+      {children}
     </div>
   );
 }
@@ -59,8 +82,8 @@ function Rail({
         </p>
       ) : (
         <div className="rail mt-3 flex gap-4 overflow-x-auto pb-2">
-          {rows.map((row) => (
-            <ShowCard key={row.show.id} row={row} />
+          {rows.map((row, i) => (
+            <ShowCard key={row.show.id} row={row} index={i} />
           ))}
         </div>
       )}
@@ -77,12 +100,13 @@ export default async function DashboardPage({
   const city = params.city && params.city !== 'all' ? params.city : undefined;
   const priority = params.priority && params.priority !== 'all' ? params.priority : undefined;
 
-  const [rows, lastScan, nextCheckAt, stats, cities] = await Promise.all([
+  const [rows, lastScan, nextCheckAt, stats, cities, activity] = await Promise.all([
     getUpcomingShows({ city, priority }),
     getLastScan(),
     getNextCheckAt(),
     getArtistStats(),
     getDistinctCities(),
+    getRecentScanActivity(),
   ]);
 
   const { home, elsewhere } = splitByCity(rows);
@@ -100,30 +124,40 @@ export default async function DashboardPage({
 
       <div className="panel flex flex-wrap divide-[var(--line)] px-5 sm:divide-x">
         <Metric
+          index={0}
           label="Last scan"
           value={lastScan ? formatRelative(lastScan.startedAt) : 'none yet'}
           hint={lastScan ? formatIstDateTime(lastScan.startedAt) : 'run one from Scans'}
         />
         <Metric
+          index={1}
           label="Next due"
           value={formatEta(nextCheckAt)}
           hint={nextCheckAt ? formatIstDateTime(nextCheckAt) : 'no active artists'}
         />
         <Metric
+          index={2}
           label="Artists"
-          value={`${stats.active} active`}
+          count={stats.active}
           hint={`${stats.starred} starred · ${stats.total} total`}
         />
         <Metric
+          index={3}
           label="Upcoming shows"
-          value={String(rows.length)}
+          count={rows.length}
           hint={`${home.length} in ${HOME_CITY} · ${elsewhere.length} elsewhere`}
         />
         <Metric
+          index={4}
           label="Buy today"
-          value={String(urgent)}
+          count={urgent}
           hint={urgent > 0 ? 'early bird open in Bengaluru' : 'nothing urgent'}
         />
+        <Metric index={5} label="Items per scan" hint="last 14 scans">
+          <div className="mt-1">
+            <Sparkline values={activity} />
+          </div>
+        </Metric>
       </div>
 
       <form className="mt-5 flex flex-wrap items-center gap-2" action="/">

@@ -1,5 +1,6 @@
 import type { ShowWithArtist } from '@/lib/queries';
 import { ArtistAvatar } from '@/components/artist-avatar';
+import { Countdown } from '@/components/countdown';
 import { IconClock, IconPin, IconStar, IconTicket } from '@/components/icons';
 import { formatCountdown, formatEventDate, formatRelative } from '@/lib/time';
 
@@ -18,6 +19,12 @@ const PRIORITY_NOTE: Record<string, string> = {
   P3: 'Unconfirmed',
 };
 
+/** Server-rendered first paint, matching what Countdown will tick to. */
+function countdownLabel(deadline: Date): string {
+  const left = formatCountdown(deadline);
+  return !left || left === 'ended' ? 'window closed' : `ends in ${left}`;
+}
+
 function earlyBird(show: ShowWithArtist['show']) {
   const endsIn = formatCountdown(show.earlyBirdDeadline);
   switch (show.earlyBirdStatus) {
@@ -34,14 +41,17 @@ function earlyBird(show: ShowWithArtist['show']) {
   }
 }
 
-export function ShowCard({ row }: { row: ShowWithArtist }) {
+export function ShowCard({ row, index = 0 }: { row: ShowWithArtist; index?: number }) {
   const { show, artistName, artistStarred, artistImageUrl } = row;
   const gradient = GRADIENT[show.priority] ?? GRADIENT.P3;
   const live = show.earlyBirdStatus === 'open' || show.earlyBirdStatus === 'imminent';
 
   return (
     <article
-      className={`relative flex min-h-[320px] w-[368px] max-w-[88vw] shrink-0 flex-col overflow-hidden rounded-[20px] bg-gradient-to-br ${gradient} p-6 text-white shadow-xl shadow-black/35`}
+      style={{ ['--i' as string]: index }}
+      className={`rise lift relative flex min-h-[320px] w-[368px] max-w-[88vw] shrink-0 flex-col overflow-hidden rounded-[20px] bg-gradient-to-br ${gradient} p-6 text-white shadow-xl shadow-black/35 ${
+        show.priority === 'P0' ? 'sheen' : ''
+      }`}
     >
       {/* Soft facets, echoing the embossed shapes on the reference cards. */}
       <span
@@ -97,7 +107,17 @@ export function ShowCard({ row }: { row: ShowWithArtist }) {
           }`}
         >
           <IconTicket className="h-4 w-4" />
-          {earlyBird(show)}
+          {show.earlyBirdStatus === 'open' && show.earlyBirdDeadline ? (
+            <>
+              Early bird{' '}
+              <Countdown
+                deadline={show.earlyBirdDeadline.toISOString()}
+                initial={countdownLabel(show.earlyBirdDeadline)}
+              />
+            </>
+          ) : (
+            earlyBird(show)
+          )}
         </span>
         {show.earlyBirdNote ? (
           <p className="mt-2 text-xs text-white/65">{show.earlyBirdNote}</p>

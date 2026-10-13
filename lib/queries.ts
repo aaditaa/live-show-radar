@@ -88,3 +88,13 @@ export async function getDistinctCities() {
     .orderBy(asc(shows.city));
   return rows.map((r) => r.city);
 }
+
+/** Items found per scan, oldest first, for the dashboard sparkline. */
+export async function getRecentScanActivity(limit = 14): Promise<number[]> {
+  const rows = await db
+    .select({ itemsNew: scanRuns.itemsNew })
+    .from(scanRuns)
+    .orderBy(desc(scanRuns.startedAt))
+    .limit(limit);
+  return rows.map((row) => row.itemsNew).reverse();
+}

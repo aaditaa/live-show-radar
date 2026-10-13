@@ -73,3 +73,81 @@ body {
     linear-gradient(135deg, transparent 62%, rgba(123, 97, 255, 0.07) 62%, rgba(123, 97, 255, 0.07) 70%, transparent 70%),
     linear-gradient(115deg, transparent 72%, rgba(255, 122, 89, 0.06) 72%, rgba(255, 122, 89, 0.06) 78%, transparent 78%);
 }
+
+/* ---------- motion ----------------------------------------------------- */
+/*
+ * Entrances are staggered by index with --i, so a list arrives as a list
+ * rather than all at once. Everything here is decorative: the reduced-motion
+ * block below turns all of it off, and nothing depends on it to be legible.
+ */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes sweep {
+  from { transform: translateX(-120%) skewX(-18deg); }
+  to   { transform: translateX(320%) skewX(-18deg); }
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+@keyframes draw {
+  from { stroke-dashoffset: var(--len, 400); }
+  to   { stroke-dashoffset: 0; }
+}
+
+.rise {
+  animation: rise 0.42s cubic-bezier(0.22, 0.8, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* A P0 card is the one thing worth catching the eye; the sweep runs slowly. */
+.sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 28%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  animation: sweep 4.5s ease-in-out infinite;
+  animation-delay: 1.2s;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pulse { animation: breathe 2.4s ease-in-out infinite; }
+
+.lift { transition: transform 0.22s cubic-bezier(0.22, 0.8, 0.3, 1), box-shadow 0.22s ease; }
+.lift:hover { transform: translateY(-3px); box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.6); }
+
+.spark-line {
+  stroke-dasharray: var(--len, 400);
+  animation: draw 1.1s ease-out both;
+}
+
+/* Keyboard users get a visible ring; mouse users do not. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.rail { scroll-snap-type: x proximity; scroll-padding-left: 2px; }
+.rail > * { scroll-snap-align: start; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .sheen::after, .pulse, .spark-line {
+    animation: none !important;
+  }
+  .rise { opacity: 1; transform: none; }
+  .lift { transition: none; }
+  .spark-line { stroke-dashoffset: 0; }
+}
